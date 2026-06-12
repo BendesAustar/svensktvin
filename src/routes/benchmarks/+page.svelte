@@ -72,7 +72,7 @@
         </thead>
         <tbody>
           {#each rows as r}
-            <tr class:{"user-row" = r.user_yield_kg_ha != null}>
+            <tr class:user-row={r.user_yield_kg_ha != null}>
               <td style="padding:0.5rem;border-bottom:1px solid #f0f0f0">{r.variety_name}</td>
               <td style="padding:0.5rem;border-bottom:1px solid #f0f0f0">{r.county}</td>
               <td style="padding:0.5rem;border-bottom:1px solid #f0f0f0">{r.harvest_year}</td>

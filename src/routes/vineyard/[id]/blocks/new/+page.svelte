@@ -2,8 +2,9 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
-  import type { ActionData } from './$types';
+  import type { ActionData, PageData } from './$types';
   export let form: ActionData;
+  export let data: PageData;
 
   let searchQuery = '';
   let searchResults: Array<{ id: number; name: string; score: number; piwi: boolean; color: string }> = [];
@@ -49,7 +50,7 @@
 <svelte:head><title>Nytt block — Svenskt Vin</title></svelte:head>
 
 <main style="max-width:600px;margin:5vh auto;padding:0 1rem;font-family:sans-serif">
-  <a href="/vineyard/{$page.data.vineyard.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
+  <a href="/vineyard/{data.vineyard.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
   <h1 style="margin:0.5rem 0">Nytt block</h1>
 
   <form method="POST" use:enhance>
@@ -61,9 +62,10 @@
     <input id="block_name" type="text" name="block_name" required
       style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
 
-    <label style="display:block;margin-top:1rem;margin-bottom:0.25rem;font-size:0.9rem">Sort <span style="color:#c62828">*</span></label>
+    <label for="variety-search" style="display:block;margin-top:1rem;margin-bottom:0.25rem;font-size:0.9rem">Sort <span style="color:#c62828">*</span></label>
     <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
       <input
+        id="variety-search"
         type="text"
         placeholder="Sök sort..."
         value={searchQuery}

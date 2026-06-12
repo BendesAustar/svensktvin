@@ -12,7 +12,7 @@
 <svelte:head><title>Registrera skörd — Svenskt Vin</title></svelte:head>
 
 <main style="max-width:600px;margin:5vh auto;padding:0 1rem;font-family:sans-serif">
-  <a href="/vineyard/{$page.data.vineyard.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
+  <a href="/vineyard/{data.vineyard.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
   <h1 style="margin:0.5rem 0">Registrera skörd</h1>
 
   <form method="POST" use:enhance>

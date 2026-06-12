@@ -16,7 +16,7 @@ This plan covers the production deployment of **Svenskt Vin**, a SvelteKit-based
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 0.1 | Port 5433 alignment in all files | ⚠️ Partial | Scripts still reference 5434 in fallback defaults |
+| 0.1 | Port alignment | ✅ | Dev uses 5434; prod uses 5434. See §1.2 for rationale. |
 | 0.2 | SMTP provider selected & credentials available | 🔲 | **Blocker for magic-link login** |
 | 0.3 | Production database credentials generated | 🔲 | Separate from `sv_dev_pass` |
 | 0.4 | TLS certificate ready for domain | 🔲 | Required for `secure: true` cookies |
@@ -37,7 +37,9 @@ This plan covers the production deployment of **Svenskt Vin**, a SvelteKit-based
 
 ### 1.2 Docker Compose — Production Configuration
 
-**Current state:** Single `db` service, port 5433 mapped. No app service defined.
+**Port rationale:** Svenskt Vin uses host port **5434** (not 5433). Cinerarium's PostgreSQL instance already owns 5433 on CORE. Both services run on the same host during development, so Svenskt Vin must use a separate port to avoid a bind conflict. On a dedicated production VPS, port 5434 is used for consistency — no collision exists there, but keeping the same port simplifies the config surface.
+
+**Current state:** Single `db` service, port 5434 mapped. No app service defined.
 
 **Required additions:**
 
@@ -50,7 +52,7 @@ services:
       POSTGRES_USER: sv_app
       POSTGRES_PASSWORD: ${PG_PASSWORD}   # MUST NOT use default
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - sv_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -131,11 +133,11 @@ docker compose up -d db
 sleep 15  # wait for healthcheck
 
 # Apply migrations
-DATABASE_URL=postgres://sv_app:<prod_password>@localhost:5433/svensktvin \
+DATABASE_URL=postgres://sv_app:<prod_password>@localhost:5434/svensktvin \
   ./scripts/migrate.sh
 
 # Run verification
-DATABASE_URL=postgres://sv_app:<prod_password>@localhost:5433/svensktvin \
+DATABASE_URL=postgres://sv_app:<prod_password>@localhost:5434/svensktvin \
   ./scripts/test.sh
 ```
 
@@ -146,9 +148,9 @@ DATABASE_URL=postgres://sv_app:<prod_password>@localhost:5433/svensktvin \
 If admin accounts need pre-provisioning, use raw SQL instead of the seed script:
 
 ```sql
--- Create initial admin user (hash: bcrypt of chosen password)
-INSERT INTO users (email, name, password_hash, is_admin, active)
-VALUES ('admin@svensktvin.se', 'Admin', '<hashed>', true, true);
+-- Create initial admin user (magic-link auth — no password column)
+INSERT INTO users (email, name, is_admin, active)
+VALUES ('admin@svensktvin.se', 'Admin', true, true);
 ```
 
 ### 2.3 Backup Strategy
@@ -197,7 +199,7 @@ Retain 30 days of backups. Test restoration monthly.
 The current `.env.example` needs updating to reflect production conventions:
 
 ```bash
-DATABASE_URL=postgres://sv_app:CHANGE_ME@localhost:5433/svensktvin
+DATABASE_URL=postgres://sv_app:CHANGE_ME@localhost:5434/svensktvin
 APP_HOST=http://localhost:5173
 SESSION_COOKIE_NAME=sv_session
 NODE_ENV=development
@@ -214,13 +216,11 @@ SMTP_FROM=noreply@svensktvin.se
 
 ### 4.1 Pre-deployment Fixes (Before Go-Live)
 
-| # | Fix | Priority | Location |
-|---|-----|----------|----------|
-| 4.1.1 | Update script fallback ports to 5433 | **High** | `scripts/*.sh` — 3 files |
-| 4.1.2 | Update `.env.example` port to 5433 | **High** | `.env.example` |
-| 4.1.3 | Update README port references to 5433 | **High** | `README.md` |
-| 4.1.4 | Add `.svelte-kit` to `.gitignore` | **Low** | `.gitignore` (verify) |
-| 4.1.5 | Handle `err.code` type in edit routes | **Medium** | `blocks/[blockId]/edit`, `blocks/new` |
+| # | Fix | Priority | Status |
+|---|-----|----------|--------|
+| 4.1.1 | Port alignment — scripts, `.env.example`, README use 5434 | **High** | ✅ Done |
+| 4.1.2 | Add `.svelte-kit` to `.gitignore` | **Low** | Verify |
+| 4.1.3 | Handle `err.code` type in edit routes | **Medium** | ✅ Done (`blocks/[blockId]/edit`, `blocks/new`) |
 
 ### 4.2 Build Process
 
@@ -385,12 +385,13 @@ Monitor: `https://svensktvin.se/health` every 5 minutes.
 - [ ] Account deletion endpoint (`/api/account/delete`) — currently missing
 - [ ] Cookie notice on first visit
 
-### 8.3 Soft Deletes = Data Retention
+### 8.3 Data Retention
 
-All user data uses `deleted_at` soft deletes. Implement a data retention policy:
-- Account deletion → hard delete after 30-day grace period
-- Harvest records → keep indefinitely (benchmarking value)
-- Sessions → auto-expire after 30 days (already implemented)
+The schema does not use soft deletes — there is no `deleted_at` column on any table. Deletes are hard. Implement the following before launch:
+
+- **Account deletion** (`/api/account/delete`) — hard-deletes the user row; cascade rules handle sessions and magic-link tokens. Vineyard ownership must be transferred or the vineyard deleted first.
+- **Harvest records** — keep indefinitely (benchmarking value); excluded from account deletion cascade.
+- **Sessions** — auto-expire after 30 days (already implemented via `expires_at`).
 
 ---
 
@@ -430,7 +431,7 @@ sleep 15
 ./scripts/test.sh
 
 # 4. Create admin user (SQL)
-psql postgres://sv_app:<password>@localhost:5433/svensktvin \
+psql postgres://sv_app:<password>@localhost:5434/svensktvin \
   -f scripts/create-admin.sql
 ```
 
@@ -495,7 +496,7 @@ Migrations are **idempotent** and **never roll back** — this is by design. Dat
 # Full restore from backup
 docker exec sv_db pg_restore -U sv_app -d svensktvin /backups/svensktvin_YYYYMMDD.sql.gz
 # OR for plain SQL:
-zcat /backups/svensktvin_YYYYMMDD.sql.gz | psql postgres://sv_app@localhost:5433/svensktvin
+zcat /backups/svensktvin_YYYYMMDD.sql.gz | psql postgres://sv_app@localhost:5434/svensktvin
 ```
 
 ### 10.3 Emergency Stop
@@ -518,9 +519,7 @@ pkill -f 'svelte-kit/output/server'
 | Rate limiting | Medium | Implement | Protect auth endpoints |
 | Error tracking (Sentry) | Medium | Implement | Production error visibility |
 | Admin email provisioning | **High** | Operator | Need first admin user |
-| Script fallback ports 5434→5433 | **High** | Implement | 3 files need update |
-| .env.example port update | **High** | Implement | Document correct port |
-| README port documentation | **High** | Implement | Update all references |
+| Port alignment (5434 throughout) | ✅ Done | — | docker-compose, scripts, .env.example, README all consistent |
 | PM2 systemd integration | Low | Operator | Auto-start on boot |
 
 ---
@@ -529,16 +528,14 @@ pkill -f 'svelte-kit/output/server'
 
 | Service | Host Port | Container Port | Notes |
 |---------|-----------|---------------|-------|
-| PostgreSQL (Svenskt Vin) | 5433 | 5432 | PostGIS 16-3.4 |
+| PostgreSQL (Svenskt Vin) | 5434 | 5432 | PostGIS 16-3.4; 5434 avoids collision with Cinerarium :5433 |
 | SvelteKit app | 3000 | 3000 | Node adapter |
 | Nginx proxy | 80, 443 | — | TLS termination |
-| Go core-api (optional) | 9091 | 9091 | Separate REST layer |
 
 ## Appendix B: Docker Compose Network
 
 ```
 Host ── Nginx (80/443) ── SvelteKit App (:3000) ── Docker network ── PostgreSQL (:5432)
-                                            ── Go API (:9091) ── Docker network ── PostgreSQL (:5432)
 ```
 
 ## Appendix C: Directory Structure (Production-Ready)
