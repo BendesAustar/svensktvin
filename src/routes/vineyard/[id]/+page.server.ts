@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const [vineyard] = await sql`
     SELECT id, name, county, municipality, organic, biodynamic,
            established_year, total_area_ha, legal_name
-    FROM vineyards WHERE id = ${vineyardId} AND deleted_at IS NULL
+    FROM vineyards WHERE id = ${vineyardId}
   `;
   if (!vineyard) throw error(404, 'Vingården hittades inte.');
 
@@ -38,12 +38,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     LEFT JOIN LATERAL (
       SELECT id, harvest_year, yield_kg, brix
       FROM harvest_records
-      WHERE block_id = b.id AND deleted_at IS NULL
+      WHERE block_id = b.id
       ORDER BY harvest_year DESC
       LIMIT 1
     ) hr ON true
     WHERE b.vineyard_id = ${vineyardId}
-      AND b.deleted_at IS NULL
     ORDER BY b.block_name
   `;
 
@@ -61,20 +60,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   let benchmarkTeaser = null;
   if (mostPlanted) {
-    const [teaser] = await sql`
-      SELECT
-        v.county,
-        round(avg(hr.yield_kg / b.area_ha), 0)::int AS avg_yield_kg_ha,
-        count(DISTINCT vi.id) AS vineyard_count
+    const [teaser] = await sql`                                           AS variety_name,
+        round(avg(hr.yield_kg / b.area_ha)::numeric, 0) AS avg_yield_kg_ha,
+        count(DISTINCT vi.id)::int                       AS vineyard_count
       FROM harvest_records hr
-      JOIN blocks b ON b.id = hr.block_id
-      JOIN varieties var ON var.id = b.variety_id
-      JOIN vineyards vi ON vi.id = b.vineyard_id
+      JOIN blocks b      ON b.id    = hr.block_id
+      JOIN varieties var ON var.id  = b.variety_id
+      JOIN vineyards vi  ON vi.id   = b.vineyard_id
       WHERE var.name = ${mostPlanted.variety_name}
         AND var.status = 'approved'
-        AND hr.harvest_year = EXTRACT(YEAR FROM now())::int
+        AND hr.harvest_year = EXTRACT(YEAR FROM now())::int - 1
         AND vi.county = ${vineyard.county}
-      GROUP BY v.county
+      GROUP BY var.name
       HAVING count(DISTINCT vi.id) >= 3
     `;
 
@@ -87,7 +84,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         JOIN varieties v ON v.id = b.variety_id
         WHERE b.vineyard_id = ${vineyardId}
           AND v.name = ${mostPlanted.variety_name}
-          AND hr.harvest_year = EXTRACT(YEAR FROM now())::int
+          AND hr.harvest_year = EXTRACT(YEAR FROM now())::int - 1
       `;
 
       benchmarkTeaser = {

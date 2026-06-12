@@ -16,7 +16,7 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 
   const [vineyard] = await sql`
     SELECT id, name, county, municipality FROM vineyards
-    WHERE id = ${vineyardId} AND deleted_at IS NULL
+    WHERE id = ${vineyardId}
   `;
   if (!vineyard) throw error(404, 'Vingården hittades inte.');
 

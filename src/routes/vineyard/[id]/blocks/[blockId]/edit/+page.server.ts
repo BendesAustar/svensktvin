@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     SELECT b.*, v.name AS variety_name, v.color, v.piwi, v.status AS variety_status
     FROM blocks b
     JOIN varieties v ON v.id = b.variety_id
-    WHERE b.id = ${blockId} AND b.vineyard_id = ${vineyardId} AND b.deleted_at IS NULL
+    WHERE b.id = ${blockId} AND b.vineyard_id = ${vineyardId}
   `;
   if (!block) throw error(404, 'Blocket hittades inte.');
 
@@ -54,7 +54,6 @@ export const actions: Actions = {
     const data = await request.formData();
 
     const block_name = (data.get('block_name') as string)?.trim();
-    const variety_id = data.get('variety_id') ? Number(data.get('variety_id')) : null;
     const area_ha = data.get('area_ha') ? Number(data.get('area_ha')) : null;
     const vine_count = data.get('vine_count') ? Number(data.get('vine_count')) : null;
     const planting_year = data.get('planting_year') ? Number(data.get('planting_year')) : null;
@@ -64,14 +63,12 @@ export const actions: Actions = {
     const elevation_m = data.get('elevation_m') ? Number(data.get('elevation_m')) : null;
 
     if (!block_name) return fail(400, { error: 'Blocknamn krävs.' });
-    if (!variety_id) return fail(400, { error: 'Välj en sort.' });
     if (!area_ha || area_ha <= 0) return fail(400, { error: 'Area måste vara större än 0.' });
 
     try {
       await sql`
         UPDATE blocks SET
           block_name = ${block_name},
-          variety_id = ${variety_id},
           area_ha = ${area_ha},
           vine_count = ${vine_count},
           planting_year = ${planting_year},

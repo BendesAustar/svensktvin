@@ -22,8 +22,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     JOIN varieties v ON v.id = b.variety_id
     WHERE hr.id = ${recordId}
       AND b.vineyard_id = ${vineyardId}
-      AND hr.deleted_at IS NULL
-      AND b.deleted_at IS NULL
   `;
   if (!record) throw error(404, 'Skörden hittades inte.');
 
@@ -31,7 +29,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     SELECT b.id, b.block_name, v.name AS variety_name
     FROM blocks b
     JOIN varieties v ON v.id = b.variety_id
-    WHERE b.vineyard_id = ${vineyardId} AND b.is_active = true AND b.deleted_at IS NULL
+    WHERE b.vineyard_id = ${vineyardId} AND b.is_active = true
     ORDER BY b.block_name
   `;
 
@@ -53,8 +51,6 @@ export const actions: Actions = {
     const recordId = Number(params.recordId);
     const data = await request.formData();
 
-    const block_id = data.get('block_id') ? Number(data.get('block_id')) : null;
-    const harvest_year = data.get('harvest_year') ? Number(data.get('harvest_year')) : null;
     const harvest_date = (data.get('harvest_date') as string) || null;
     const yield_kg = data.get('yield_kg') ? Number(data.get('yield_kg')) : null;
     const brix = data.get('brix') ? Number(data.get('brix')) : null;
@@ -67,19 +63,25 @@ export const actions: Actions = {
     const sold_kg = data.get('sold_kg') ? Number(data.get('sold_kg')) : null;
     const discarded_kg = data.get('discarded_kg') ? Number(data.get('discarded_kg')) : null;
 
-    if (!block_id) return fail(400, { error: 'Välj ett block.' });
-    if (!harvest_year) return fail(400, { error: 'Skördeår krävs.' });
     if (!yield_kg || yield_kg <= 0) return fail(400, { error: 'Skördevikt (kg) måste vara större än 0.' });
 
     try {
       await sql`
         UPDATE harvest_records SET
-          block_id = ${block_id}, harvest_year = ${harvest_year}, harvest_date = ${harvest_date},
-          yield_kg = ${yield_kg}, brix = ${brix}, acid_g_l = ${acid_g_l},
-          vine_health_rating = ${vine_health_rating}, notes = ${notes},
-          still_wine_l = ${still_wine_l}, sparkling_l = ${sparkling_l}, juice_l = ${juice_l},
-          sold_kg = ${sold_kg}, discarded_kg = ${discarded_kg}
+          harvest_date       = ${harvest_date},
+          yield_kg           = ${yield_kg},
+          brix               = ${brix},
+          acid_g_l           = ${acid_g_l},
+          vine_health_rating = ${vine_health_rating},
+          notes              = ${notes},
+          still_wine_l       = ${still_wine_l},
+          sparkling_l        = ${sparkling_l},
+          juice_l            = ${juice_l},
+          sold_kg            = ${sold_kg},
+          discarded_kg       = ${discarded_kg},
+          updated_at         = now()
         WHERE id = ${recordId}
+          AND block_id IN (SELECT id FROM blocks WHERE vineyard_id = ${vineyardId})
       `;
     } catch (err) {
       console.error('Failed to update harvest record:', err);

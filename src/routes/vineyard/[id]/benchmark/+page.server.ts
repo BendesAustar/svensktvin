@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   // Load vineyard info
   const [vineyard] = await sql`
-    SELECT name, county FROM vineyards WHERE id = ${vineyardId} AND deleted_at IS NULL
+    SELECT name, county FROM vineyards WHERE id = ${vineyardId}
   `;
 
   // Load user's variety-level yields by year

@@ -60,19 +60,58 @@
       </label>
     </fieldset>
 
+    {#if $page.form?.error}
+      <p class="error" style="color:#c62828;padding:0.75rem;background:#fef0f0;border-radius:4px;margin-bottom:1rem">{$page.form.error}</p>
+    {/if}
+
     <fieldset style="border:1px solid #ddd;padding:1rem;border-radius:4px;margin-bottom:1.5rem">
       <legend style="font-weight:600;padding:0 0.5rem">Medlemmar</legend>
-      {#if members.length > 0}
-        <ul style="list-style:none;padding:0;margin:0">
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+        <thead>
+          <tr style="border-bottom:2px solid #ddd;text-align:left;font-size:0.85rem;color:#555">
+            <th style="padding:0.5rem">Namn</th>
+            <th style="padding:0.5rem">E-post</th>
+            <th style="padding:0.5rem">Roll</th>
+            <th style="padding:0.5rem"></th>
+          </tr>
+        </thead>
+        <tbody>
           {#each members as m}
-            <li style="padding:0.5rem 0;border-bottom:1px solid #f0f0f0">
-              <strong>{m.name}</strong> ({m.email}) — {m.role}
-            </li>
+            <tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:0.5rem"><strong>{m.name}</strong></td>
+              <td style="padding:0.5rem">{m.email}</td>
+              <td style="padding:0.5rem">{m.role}</td>
+              <td style="padding:0.5rem">
+                <form method="POST" use:enhance>
+                  <input type="hidden" name="action" value="remove_member" />
+                  <input type="hidden" name="user_id" value={m.id} />
+                  <button type="submit" style="padding:0.3rem 0.6rem;background:#ef5350;color:#fff;border:none;border-radius:3px;font-size:0.8rem;cursor:pointer" on:click={(e) => { if (!confirm('Ta bort denna användare?')) e.preventDefault(); }}>Ta bort</button>
+                </form>
+              </td>
+            </tr>
           {/each}
-        </ul>
-      {:else}
-        <p style="color:#888;margin:0">Inga medlemmar ännu.</p>
-      {/if}
+        </tbody>
+      </table>
+
+      <h3 style="margin:1rem 0 0.5rem;font-size:1rem">Bjud in användare</h3>
+      <form method="POST" use:enhance style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <label for="invite-email" style="display:block;margin-bottom:0.25rem;font-size:0.85rem">E-postadress</label>
+          <input id="invite-email" type="email" name="email" required
+            style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;font-size:0.9rem" />
+        </div>
+        <div style="min-width:120px">
+          <label for="invite-role" style="display:block;margin-bottom:0.25rem;font-size:0.85rem">Roll</label>
+          <select id="invite-role" name="role"
+            style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;font-size:0.9rem">
+            <option value="editor">Redaktör</option>
+            <option value="owner">Ägare</option>
+          </select>
+        </div>
+        <button type="submit" name="action" value="invite_member"
+          style="padding:0.5rem 1rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;font-size:0.9rem;cursor:pointer;white-space:nowrap">Bjud in</button>
+      </form>
     </fieldset>
 
     <button type="submit"

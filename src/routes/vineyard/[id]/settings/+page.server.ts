@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const [vineyard] = await sql`
     SELECT id, name, county, municipality, organic, biodynamic,
            established_year, total_area_ha, legal_id, legal_id_type, legal_name
-    FROM vineyards WHERE id = ${vineyardId} AND deleted_at IS NULL
+    FROM vineyards WHERE id = ${vineyardId}
   `;
   if (!vineyard) throw error(404, 'Vingården hittades inte.');
 
@@ -79,6 +79,55 @@ export const actions: Actions = {
         console.error('Failed to update vineyard:', err);
         return fail(500, { error: 'Kunde inte uppdatera vingård. Försök igen.' });
       }
+    }
+
+    // Invite a new member by email
+    if (action === 'invite_member') {
+      const email = (data.get('email') as string)?.trim().toLowerCase();
+      const role = data.get('role') as string;
+
+      if (!email || !role || !['owner', 'editor'].includes(role)) {
+        return fail(400, { error: 'E-post och roll krävs.' });
+      }
+
+      const [user] = await sql`
+        SELECT id FROM users WHERE email = ${email} AND active = true
+      `;
+      if (!user) {
+        return fail(404, { error: 'Ingen aktiv användare med den e-postadressen.' });
+      }
+
+      await sql`
+        INSERT INTO vineyard_members (vineyard_id, user_id, role)
+        VALUES (${vineyardId}, ${user.id}, ${role})
+        ON CONFLICT (vineyard_id, user_id) DO UPDATE SET role = EXCLUDED.role
+      `;
+    }
+
+    // Remove a member
+    if (action === 'remove_member') {
+      const targetUserId = Number(data.get('user_id'));
+
+      if (targetUserId === locals.user!.id) {
+        return fail(400, { error: 'Du kan inte ta bort dig själv.' });
+      }
+
+      const [{ count: ownerCount }] = await sql<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM vineyard_members
+        WHERE vineyard_id = ${vineyardId} AND role = 'owner'
+      `;
+      const [targetMember] = await sql`
+        SELECT role FROM vineyard_members
+        WHERE vineyard_id = ${vineyardId} AND user_id = ${targetUserId}
+      `;
+      if (targetMember?.role === 'owner' && ownerCount <= 1) {
+        return fail(400, { error: 'Kan inte ta bort den siste ägaren.' });
+      }
+
+      await sql`
+        DELETE FROM vineyard_members
+        WHERE vineyard_id = ${vineyardId} AND user_id = ${targetUserId}
+      `;
     }
 
     return { success: true };

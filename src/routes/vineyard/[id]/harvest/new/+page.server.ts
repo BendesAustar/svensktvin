@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     SELECT b.id, b.block_name, v.name AS variety_name
     FROM blocks b
     JOIN varieties v ON v.id = b.variety_id
-    WHERE b.vineyard_id = ${vineyardId} AND b.is_active = true AND b.deleted_at IS NULL
+    WHERE b.vineyard_id = ${vineyardId} AND b.is_active = true
     ORDER BY b.block_name
   `;
 
@@ -63,13 +63,13 @@ export const actions: Actions = {
 
     // Verify block belongs to vineyard
     const [block] = await sql`
-      SELECT id FROM blocks WHERE id = ${block_id} AND vineyard_id = ${vineyardId} AND deleted_at IS NULL
+      SELECT id FROM blocks WHERE id = ${block_id} AND vineyard_id = ${vineyardId}
     `;
     if (!block) throw error(404, 'Blocket hittades inte.');
 
     // Check for duplicate year
     const [existing] = await sql`
-      SELECT id FROM harvest_records WHERE block_id = ${block_id} AND harvest_year = ${harvest_year} AND deleted_at IS NULL
+      SELECT id FROM harvest_records WHERE block_id = ${block_id} AND harvest_year = ${harvest_year}
     `;
     if (existing) {
       return fail(400, { error: `En skörd för ${harvest_year} finns redan.` });
