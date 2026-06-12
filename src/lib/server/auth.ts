@@ -49,7 +49,7 @@ export async function createSession(userId: number): Promise<string> {
 export async function getSession(
   sessionId: string
 ): Promise<{ id: number; email: string; name: string; is_admin: boolean } | null> {
-  const [row] = await sql`
+  const [row] = await sql<{ id: number; email: string; name: string; is_admin: boolean }[]>`
     SELECT u.id, u.email, u.name, u.is_admin
     FROM sessions s
     JOIN users u ON u.id = s.user_id
@@ -67,7 +67,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function getUserByEmail(
   email: string
 ): Promise<{ id: number } | null> {
-  const [user] = await sql`
+  const [user] = await sql<{ id: number }[]>`
     SELECT id FROM users WHERE email = ${email} AND active = true
   `;
   return user ?? null;

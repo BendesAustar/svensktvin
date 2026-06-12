@@ -60,7 +60,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   let benchmarkTeaser = null;
   if (mostPlanted) {
-    const [teaser] = await sql`                                           AS variety_name,
+    const [teaser] = await sql`
+      SELECT
+        var.name                                           AS variety_name,
         round(avg(hr.yield_kg / b.area_ha)::numeric, 0) AS avg_yield_kg_ha,
         count(DISTINCT vi.id)::int                       AS vineyard_count
       FROM harvest_records hr

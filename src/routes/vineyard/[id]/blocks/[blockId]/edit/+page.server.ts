@@ -79,7 +79,7 @@ export const actions: Actions = {
         WHERE id = ${blockId} AND vineyard_id = ${vineyardId}
       `;
     } catch (err) {
-      if (err?.code === '23505') {
+      if ((err as { code?: string })?.code === '23505') {
         return fail(400, { error: 'Ett block med det namnet finns redan i denna vingård.' });
       }
       console.error('Failed to update block:', err);
