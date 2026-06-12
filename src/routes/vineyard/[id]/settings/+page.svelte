@@ -6,14 +6,16 @@
 
   const { vineyard, members } = data;
 
-  function onRemoveMember(memberId: number, role: string, e: Event) {
-    if (role === 'owner') {
+function onRemoveMember(memberId: number, role: string, e: Event) {
+    const rid = typeof memberId === 'number' ? memberId : Number(memberId);
+    const rrole = typeof role === 'string' ? role : String(role);
+    if (rrole === 'owner') {
       e.preventDefault();
       alert('Kan inte ta bort ägare.');
     } else if (!confirm('Ta bort denna användare?')) {
       e.preventDefault();
     }
-  }
+}
 </script>
 
 <svelte:head><title>Inställningar: {vineyard.name} — Svenskt Vin</title></svelte:head>
@@ -56,6 +58,27 @@
       <label for="total_area_ha" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Total area (ha)</label>
       <input id="total_area_ha" type="number" name="total_area_ha" step="0.01" min="0" value={vineyard.total_area_ha ?? ''}
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <label for="legal_id_type" style="display:block;margin-top:1rem;margin-bottom:0.25rem;font-size:0.9rem">Rättighetstyp</label>
+      <select id="legal_id_type" name="legal_id_type"
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box">
+        <option value="">Välj</option>
+        <option value="enskild" selected={vineyard.legal_id_type === 'enskild'}>enskild</option>
+        <option value="ab" selected={vineyard.legal_id_type === 'ab'}>ab</option>
+        <option value="handelsbolag" selected={vineyard.legal_id_type === 'handelsbolag'}>handelsbolag</option>
+        <option value="swealagsbolag" selected={vineyard.legal_id_type === 'swealagsbolag'}>swealagsbolag</option>
+        <option value="stiftelse" selected={vineyard.legal_id_type === 'stiftelse'}>stiftelse</option>
+        <option value="kommun" selected={vineyard.legal_id_type === 'kommun'}>kommun</option>
+        <option value="other" selected={vineyard.legal_id_type === 'other'}>other</option>
+      </select>
+
+      <label for="legal_id" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Organisationsnummer / Reg.nr</label>
+      <input id="legal_id" type="text" name="legal_id" value={vineyard.legal_id ?? ''}
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <label for="legal_name" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Företagsnamn</label>
+      <input id="legal_name" type="text" name="legal_name" value={vineyard.legal_name ?? ''}
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
     </fieldset>
 
     <fieldset style="border:1px solid #ddd;padding:1rem;border-radius:4px;margin-bottom:1.5rem">
@@ -90,7 +113,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each members as m}
+        {#each members as m (m.id)}
           <tr style="border-bottom:1px solid #f0f0f0">
             <td style="padding:0.5rem"><strong>{m.name}</strong></td>
             <td style="padding:0.5rem">{m.email}</td>
@@ -99,7 +122,7 @@
               <form method="POST" use:enhance>
                 <input type="hidden" name="action" value="remove_member" />
                 <input type="hidden" name="user_id" value={m.id} />
-                <button type="submit" on:click={(e) => onRemoveMember(m.id, m.role, e)}
+                <button type="submit" on:click={(e) => onRemoveMember(m.id as number, m.role as string, e)}
                   style="padding:0.3rem 0.6rem;background:#ef5350;color:#fff;border:none;border-radius:3px;font-size:0.8rem;cursor:pointer">
                   Ta bort
                 </button>

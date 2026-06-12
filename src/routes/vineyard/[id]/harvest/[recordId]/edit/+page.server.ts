@@ -51,6 +51,13 @@ export const actions: Actions = {
     const recordId = Number(params.recordId);
     const data = await request.formData();
 
+    // Load current record for fallback values
+    const [current] = await sql`
+      SELECT block_id, harvest_year FROM harvest_records WHERE id = ${recordId}
+    `;
+
+    const block_id = data.get('block_id') ? Number(data.get('block_id')) : current.block_id;
+    const harvest_year = data.get('harvest_year') ? Number(data.get('harvest_year')) : current.harvest_year;
     const harvest_date = (data.get('harvest_date') as string) || null;
     const yield_kg = data.get('yield_kg') ? Number(data.get('yield_kg')) : null;
     const brix = data.get('brix') ? Number(data.get('brix')) : null;
@@ -68,6 +75,8 @@ export const actions: Actions = {
     try {
       await sql`
         UPDATE harvest_records SET
+          block_id           = ${block_id},
+          harvest_year       = ${harvest_year},
           harvest_date       = ${harvest_date},
           yield_kg           = ${yield_kg},
           brix               = ${brix},
@@ -83,7 +92,11 @@ export const actions: Actions = {
         WHERE id = ${recordId}
           AND block_id IN (SELECT id FROM blocks WHERE vineyard_id = ${vineyardId})
       `;
-    } catch (err) {
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === '23505') {
+        return fail(400, { error: `En skörd för år ${harvest_year} finns redan på det valda blocket.` });
+      }
       console.error('Failed to update harvest record:', err);
       return fail(500, { error: 'Kunde inte uppdatera skörd. Försök igen.' });
     }

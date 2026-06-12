@@ -14,11 +14,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'location_not_found' }, { status: 400 });
   }
 
-  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=sv`;
+  // Rate-limit cache key: round coordinates to 4 decimal places (~10m precision)
+  const cacheKey = `geo:${lat.toFixed(4)},${lon.toFixed(4)}`;
+  const cached = request.headers.get('x-geo-cache') === 'hit' ? null : null;
+
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&accept-language=sv`;
 
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'SvensktVin/1.0 (contact@svensktvin.se)' }
+      headers: {
+        'User-Agent': 'SvensktVin/1.0 (contact@svensktvin.se)',
+        'Accept-Language': 'sv'
+      }
     });
 
     if (!res.ok) {

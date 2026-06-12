@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ locals }) => {
   `;
 
   const vineyards = await Promise.all(
-    vineyardMembers.map(async (member: { vineyard_id: number; vineyard_name: string; role: string }) => {
+    vineyardMembers.map(async (member) => {
       const [vineyard] = await sql`
         SELECT id, name, county, municipality, organic, biodynamic,
                established_year, total_area_ha, legal_id, legal_id_type, legal_name
@@ -30,13 +30,21 @@ export const GET: RequestHandler = async ({ locals }) => {
       `;
 
       const blocks = await sql`
-        SELECT id, name, variety, area_ha, planted_year, notes
-        FROM blocks WHERE vineyard_id = ${member.vineyard_id}
+        SELECT b.id, b.block_name, b.area_ha, b.planting_year, b.notes,
+               v.name AS variety_name
+        FROM blocks b
+        LEFT JOIN varieties v ON v.id = b.variety_id
+        WHERE b.vineyard_id = ${member.vineyard_id}
       `;
 
       const harvests = await sql`
-        SELECT id, block_id, yield_kg, brix, acidity, ph, harvest_date, notes
-        FROM harvest_records WHERE vineyard_id = ${member.vineyard_id}
+        SELECT id, block_id, yield_kg, brix, acid_g_l, harvest_date, notes
+        FROM harvest_records
+        WHERE id IN (
+          SELECT hr.id FROM harvest_records hr
+          JOIN blocks bl ON bl.id = hr.block_id
+          WHERE bl.vineyard_id = ${member.vineyard_id}
+        )
       `;
 
       return {
@@ -51,10 +59,10 @@ export const GET: RequestHandler = async ({ locals }) => {
         role: member.role,
         blocks: blocks.map((b: Record<string, unknown>) => ({
           id: b.id,
-          name: b.name,
-          variety: b.variety,
+          name: b.block_name,
+          variety: b.variety_name,
           area_ha: b.area_ha,
-          planted_year: b.planted_year,
+          planted_year: b.planting_year,
           notes: b.notes
         })),
         harvests: harvests.map((h: Record<string, unknown>) => ({
@@ -62,8 +70,7 @@ export const GET: RequestHandler = async ({ locals }) => {
           block_id: h.block_id,
           yield_kg: h.yield_kg,
           brix: h.brix,
-          acidity: h.acidity,
-          ph: h.ph,
+          acidity: h.acid_g_l,
           harvest_date: h.harvest_date,
           notes: h.notes
         }))

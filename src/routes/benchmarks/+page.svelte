@@ -1,5 +1,6 @@
 <!-- src/routes/benchmarks/+page.svelte -->
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import type { PageData } from './$types';
   export let data: PageData;
 
@@ -9,15 +10,18 @@
     const p = new URLSearchParams();
     if (year) p.set('year', year);
     if (variety) p.set('variety', variety);
-    const qs = p.toString();
-    window.location.href = `/benchmarks${qs ? '?' + qs : ''}`;
+    goto('/benchmarks' + (p.toString() ? '?' + p.toString() : ''));
+  }
+
+  function goBack() {
+    window.history.back();
   }
 </script>
 
 <svelte:head><title>Jämförelsedata — Svenskt Vin</title></svelte:head>
 
 <main style="max-width:900px;margin:5vh auto;padding:0 1rem;font-family:sans-serif">
-  <a href="/" style="color:#555;font-size:0.9rem;text-decoration:none">← Hem</a>
+  <button type="button" onclick={goBack} style="background:none;border:none;color:#555;font-size:0.9rem;text-decoration:none;cursor:pointer;padding:0">← Tillbaka</button>
   <h1 style="margin:0.5rem 0">Jämförelsedata</h1>
   <p class="hint" style="color:#666;margin-bottom:1.5rem">
     Visar enbart kombinationer med minst 3 vingårdar. Din avkastning markeras i grönt.

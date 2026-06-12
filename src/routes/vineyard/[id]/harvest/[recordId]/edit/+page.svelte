@@ -77,7 +77,7 @@
       <input id="still_wine_l" type="number" name="still_wine_l" step="0.1" min="0" value={record.still_wine_l ?? ''}
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
 
-      <label for="sparkling_l" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Sparkling (L)</label>
+      <label for="sparkling_l" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Petillant/Brut (L)</label>
       <input id="sparkling_l" type="number" name="sparkling_l" step="0.1" min="0" value={record.sparkling_l ?? ''}
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
 

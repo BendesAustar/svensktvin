@@ -41,8 +41,8 @@
               <td style="padding:0.5rem">{bench.variety_name}</td>
               <td style="padding:0.5rem">{bench.harvest_year}</td>
               <td style="padding:0.5rem">
-                {bench.county_avg_kg_ha}
-                {#if bench.county_avg_kg_ha >= 1500}
+                {Number(bench.county_avg_kg_ha)}
+                {#if Number(bench.county_avg_kg_ha) >= 1500}
                   <span style="color:#2d6a2d;font-size:0.8rem"> ✓</span>
                 {:else}
                   <span style="color:#888;font-size:0.8rem"></span>

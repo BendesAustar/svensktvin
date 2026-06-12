@@ -75,6 +75,11 @@
       <label for="elevation_m" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Höjmö (m)</label>
       <input id="elevation_m" type="number" name="elevation_m" min="0" value={block.elevation_m ?? ''}
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <label style="display:flex;align-items:center;margin-top:1rem;cursor:pointer">
+        <input type="checkbox" name="is_active" value="on" checked={block.is_active} style="margin-right:0.5rem;font-size:1.2rem" />
+        Aktiv block
+      </label>
     </fieldset>
 
     <button type="submit"

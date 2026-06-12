@@ -7,7 +7,10 @@ export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) throw redirect(303, '/login');
 
   const memberships = await sql`
-    SELECT vineyard_id, role FROM vineyard_members WHERE user_id = ${locals.user.id}
+    SELECT vm.vineyard_id, vm.role, v.name as vineyard_name
+    FROM vineyard_members vm
+    JOIN vineyards v ON v.id = vm.vineyard_id
+    WHERE vm.user_id = ${locals.user.id}
   `;
 
   if (memberships.length === 0) throw redirect(303, '/onboard');

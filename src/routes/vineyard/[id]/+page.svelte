@@ -16,7 +16,7 @@
     <h1 style="margin:0 0 0.25rem 0">{vineyard.name}</h1>
     <p style="color:#555;margin:0">
       {vineyard.county} · {vineyard.municipality}
-      {#if vineyard.established_year} · Uppe {vineyard.established_year}{/if}
+      {#if vineyard.established_year} · Startad {vineyard.established_year}{/if}
       {#if vineyard.total_area_ha} · {vineyard.total_area_ha} ha{/if}
     </p>
     <p style="color:#555;margin:0.25rem 0">

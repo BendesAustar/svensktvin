@@ -61,6 +61,7 @@ export const actions: Actions = {
     const aspect = (data.get('aspect') as string) || null;
     const slope_degrees = data.get('slope_degrees') ? Number(data.get('slope_degrees')) : null;
     const elevation_m = data.get('elevation_m') ? Number(data.get('elevation_m')) : null;
+    const is_active = data.get('is_active') === 'on';
 
     if (!block_name) return fail(400, { error: 'Blocknamn krävs.' });
     if (!area_ha || area_ha <= 0) return fail(400, { error: 'Area måste vara större än 0.' });
@@ -75,7 +76,8 @@ export const actions: Actions = {
           training_system = ${training_system},
           aspect = ${aspect},
           slope_degrees = ${slope_degrees},
-          elevation_m = ${elevation_m}
+          elevation_m = ${elevation_m},
+          is_active = ${is_active}
         WHERE id = ${blockId} AND vineyard_id = ${vineyardId}
       `;
     } catch (err) {
