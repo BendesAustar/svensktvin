@@ -6,12 +6,12 @@ DECLARE
   block_sol_soder integer;
   block_regent_mitt integer;
 BEGIN
-  SELECT id INTO block_sol_soder
+  SELECT blocks.id INTO block_sol_soder
   FROM blocks JOIN vineyards ON vineyards.id = blocks.vineyard_id
   WHERE vineyards.name = 'Vingård A' AND blocks.block_name = 'Sol söder'
   LIMIT 1;
 
-  SELECT id INTO block_regent_mitt
+  SELECT blocks.id INTO block_regent_mitt
   FROM blocks JOIN vineyards ON vineyards.id = blocks.vineyard_id
   WHERE vineyards.name = 'Vingård A' AND blocks.block_name = 'Regent mitt'
   LIMIT 1;

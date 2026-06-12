@@ -9,18 +9,26 @@ DECLARE
 BEGIN
   INSERT INTO users (email, name, is_admin)
   VALUES
-    ('admin@svensktvin.se', 'Admin Användare', true),
-    ('owner@example.se', 'Värd Ägare', false),
-    ('editor@example.se', 'Redigerare Exempel', false)
+    ('admin@svensktvin.se', 'Admin Användare', true)
   RETURNING id INTO admin_user_id;
 
-  SELECT id INTO owner_id FROM users WHERE email = 'owner@example.se' LIMIT 1;
-  SELECT id INTO editor_id FROM users FROM users WHERE email = 'editor@example.se' LIMIT 1;
+  INSERT INTO users (email, name, is_admin)
+  VALUES
+    ('owner@example.se', 'Värd Ägare', false)
+  RETURNING id INTO owner_id;
 
-  -- Link to vineyard A: admin is owner, owner is owner, editor is editor
+  INSERT INTO users (email, name, is_admin)
+  VALUES
+    ('editor@example.se', 'Redigerare Exempel', false)
+  RETURNING id INTO editor_id;
+
+  -- Link users to vineyard A
   INSERT INTO vineyard_members (vineyard_id, user_id, role)
-  SELECT (SELECT id FROM vineyards WHERE name = 'Vingård A' LIMIT 1), u.id,
-         CASE WHEN u.is_admin OR u.email = 'owner@example.se' THEN 'owner' ELSE 'editor' END
-  FROM users u
-  WHERE u.email IN ('admin@svensktvin.se', 'owner@example.se', 'editor@example.se');
+  SELECT (SELECT id FROM vineyards WHERE name = 'Vingård A' LIMIT 1), admin_user_id, 'owner';
+
+  INSERT INTO vineyard_members (vineyard_id, user_id, role)
+  SELECT (SELECT id FROM vineyards WHERE name = 'Vingård A' LIMIT 1), owner_id, 'owner';
+
+  INSERT INTO vineyard_members (vineyard_id, user_id, role)
+  SELECT (SELECT id FROM vineyards WHERE name = 'Vingård A' LIMIT 1), editor_id, 'editor';
 END $$;

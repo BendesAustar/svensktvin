@@ -1,40 +1,29 @@
 // src/tests/email.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { loginEmailTemplate, welcomeEmailTemplate } from '$lib/server/email';
 
-describe('sendMagicLink', () => {
-  beforeEach(() => {
-    vi.resetModules();
+describe('loginEmailTemplate', () => {
+  it('should generate a valid HTML email', () => {
+    const { html, text } = loginEmailTemplate('https://example.com', 'token123');
+    expect(html).toContain('https://example.com/auth/verify?token=token123');
+    expect(html).toContain('Svenskt Vin');
+    expect(text).toContain('token123');
+    expect(text).toContain('15 minuter');
   });
 
-  it('calls nodemailer sendMail with correct fields', async () => {
-    // Mock nodemailer before importing email module
-    const sendMailMock = vi.fn().mockResolvedValue({ messageId: 'test-id' });
-    vi.mock('nodemailer', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('nodemailer')>();
-      return {
-        default: {
-          createTransport: vi.fn(() => ({ sendMail: sendMailMock }))
-        }
-      };
-    });
+  it('should include security warning', () => {
+    const { html, text } = loginEmailTemplate('https://example.com', 'abc');
+    expect(html).toContain('Om du inte begärde detta, ignorera detta mejl.');
+    expect(text).toContain('Om du inte begärde detta, ignorera detta mejl.');
+  });
+});
 
-    // Set env vars before importing
-    process.env.SMTP_HOST = 'smtp.test.local';
-    process.env.SMTP_PORT = '587';
-    process.env.SMTP_USER = 'test';
-    process.env.SMTP_PASS = 'pass';
-    process.env.SMTP_FROM = 'no-reply@test.local';
-    process.env.APP_HOST = 'http://localhost:5173';
-
-    const { sendMagicLink } = await import('../lib/server/email.js');
-
-    await sendMagicLink('user@example.com', 'abc123token');
-
-    expect(sendMailMock).toHaveBeenCalledOnce();
-    const call = sendMailMock.mock.calls[0][0];
-    expect(call.to).toBe('user@example.com');
-    expect(call.subject).toBe('Logga in på Svenskt Vin');
-    expect(call.text).toContain('abc123token');
-    expect(call.html).toContain('abc123token');
+describe('welcomeEmailTemplate', () => {
+  it('should generate a welcome email with personalization', () => {
+    const { html, text } = welcomeEmailTemplate('Testanvändare', 'https://example.com/vineyard/1');
+    expect(html).toContain('Testanvändare');
+    expect(html).toContain('Välkommen');
+    expect(text).toContain('Testanvändare');
+    expect(text).toContain('https://example.com/vineyard/1');
   });
 });

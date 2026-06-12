@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS blocks (
   is_active       boolean NOT NULL DEFAULT true,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now(),
-  deleted_at      timestamptz,
-
-  UNIQUE (vineyard_id, LOWER(block_name))
+  deleted_at      timestamptz
 );
+
+-- Case-insensitive unique block name per vineyard
+CREATE UNIQUE INDEX IF NOT EXISTS idx_blocks_name_ci
+  ON blocks (vineyard_id, LOWER(block_name)) WHERE deleted_at IS NULL;

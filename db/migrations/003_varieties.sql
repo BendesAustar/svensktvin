@@ -11,9 +11,11 @@ CREATE TABLE IF NOT EXISTS varieties (
   status                   text NOT NULL DEFAULT 'approved'
                              CHECK (status IN ('approved', 'review_needed')),
   submitted_by_vineyard_id integer,
-  created_at               timestamptz NOT NULL DEFAULT now(),
-
-  UNIQUE (LOWER(name))
+  created_at               timestamptz NOT NULL DEFAULT now()
 );
+
+-- Case-insensitive unique name (via lowercase index)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_varieties_name_ci
+  ON varieties (LOWER(name));
 
 CREATE INDEX IF NOT EXISTS idx_varieties_name_trgm ON varieties USING GIN (name gin_trgm_ops);

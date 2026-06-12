@@ -2,6 +2,16 @@
 import { randomBytes, createHash } from 'crypto';
 import { sql } from './db.js';
 
+export function createSessionToken(): string {
+  return randomBytes(64).toString('hex');
+}
+
+export function createMagicLinkToken(): { token: string; hash: string } {
+  const raw = randomBytes(32).toString('hex');
+  const hash = createHash('sha256').update(raw).digest('hex');
+  return { token: raw, hash };
+}
+
 export async function createMagicLink(userId: number): Promise<string> {
   const raw = randomBytes(32).toString('hex');
   const hash = createHash('sha256').update(raw).digest('hex');
