@@ -1,0 +1,15 @@
+# Svenskt Vin Core API Configuration
+api:
+  port: 9091
+
+database:
+  url: "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin"
+
+auth:
+  session_expiry: "720h"  # 30 days
+
+rate_limit:
+  auth_requests: 3
+  auth_window: "5m"
+  write_requests: 30
+  write_window: "1m"

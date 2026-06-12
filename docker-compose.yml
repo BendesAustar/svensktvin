@@ -17,6 +17,21 @@ services:
     networks:
       - sv_internal
 
+  api:
+    build:
+      context: ./core-api
+      dockerfile: Dockerfile
+    ports:
+      - "9091:9091"
+    environment:
+      DATABASE_URL: postgres://sv_app:${PG_PASSWORD:-sv_dev_pass}@db:5432/svensktvin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sv_internal
+    restart: unless-stopped
+
 volumes:
   sv_db_data:
 
