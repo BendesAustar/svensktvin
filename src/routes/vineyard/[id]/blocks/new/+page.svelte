@@ -27,7 +27,11 @@
       const data = await res.json() as { matches: typeof searchResults; high_confidence: boolean };
       searchResults = data.matches;
       highConfidence = data.high_confidence;
-      selectedVarietyId = null;
+      if (data.high_confidence && data.matches.length > 0) {
+        selectVariety(data.matches[0].id, data.matches[0].name);
+      } else {
+        selectedVarietyId = null;
+      }
     } catch {
       searchError = 'Sökningen misslyckades.';
       searchResults = [];
@@ -36,14 +40,19 @@
     }
   }
 
-  function selectVariety(id: number) {
+  function selectVariety(id: number, name: string) {
     selectedVarietyId = id;
+    searchQuery = name;
+    searchResults = [];
+    highConfidence = false;
     customVarietyName = '';
   }
 
   function useCustom() {
     selectedVarietyId = null;
     customVarietyName = searchResults[0]?.name ?? '';
+    searchResults = [];
+    highConfidence = false;
   }
 </script>
 
@@ -78,25 +87,13 @@
       <p style="color:#888;font-size:0.9rem">Söker...</p>
     {:else if searchError}
       <p style="color:#c62828;font-size:0.9rem">{searchError}</p>
-    {:else if highConfidence && searchResults.length > 0}
-      <div style="background:#e8f5e9;padding:0.75rem;border-radius:4px;margin-bottom:0.5rem">
-        <p style="margin:0;font-size:0.9rem">
-          Menade du <strong>{searchResults[0].name}</strong>?
-        </p>
-        <button type="button" onclick={() => selectVariety(searchResults[0].id)}
-          style="margin-top:0.5rem;padding:0.4rem 0.8rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem">
-          Ja, använd denna sort
-        </button>
-        <button type="button" onclick={() => { searchResults = []; selectedVarietyId = null; }}
-          style="margin-top:0.5rem;margin-left:0.5rem;padding:0.4rem 0.8rem;background:none;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:0.85rem">
-          Nej, sök själv
-        </button>
-      </div>
+    {:else if selectedVarietyId !== null}
+      <p style="color:#2d6a2d;font-size:0.9rem;margin:0.25rem 0">✓ {searchQuery}</p>
     {:else if searchResults.length > 0}
       <ul style="list-style:none;padding:0;margin-bottom:0.5rem;border:1px solid #eee;border-radius:4px">
         {#each searchResults as result}
           <button type="button" tabindex="0" style="display:block;width:100%;text-align:left;padding:0.5rem 0.75rem;border-bottom:1px solid #f0f0f0;cursor:pointer;background:none;border-left:none;border-right:none;border-top:none"
-              onclick={() => selectVariety(result.id)}>
+              onclick={() => selectVariety(result.id, result.name)}>
             {result.name}
             <span style="color:#888;font-size:0.8rem"> ({result.color}{#if result.piwi} · PIWI{/if})</span>
           </button>
@@ -106,7 +103,7 @@
         style="padding:0.4rem 0.8rem;background:none;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:0.85rem">
         Ingen av dessa — använd detta namn
       </button>
-    {:else if searchQuery}
+    {:else if searchQuery.length >= 2}
       <p style="color:#888;font-size:0.9rem">Inga träffar. Sorten läggs till för granskning.</p>
     {/if}
 

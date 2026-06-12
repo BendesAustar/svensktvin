@@ -70,7 +70,6 @@ services:
       DATABASE_URL: postgres://sv_app:${PG_PASSWORD}@db:5432/svensktvin
       APP_HOST: https://svensktvin.se    # or your domain
       NODE_ENV: production
-      SESSION_COOKIE_NAME: sv_session
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
@@ -175,7 +174,6 @@ Retain 30 days of backups. Test restoration monthly.
 | `DATABASE_URL` | Yes | `postgres://sv_app:<password>@db:5432/svensktvin` | Internal Docker network hostname |
 | `NODE_ENV` | Yes | `production` | Enables production mode for cookies, error handling |
 | `APP_HOST` | Yes | `https://svensktvin.se` | Used in magic-link URLs |
-| `SESSION_COOKIE_NAME` | Yes | `sv_session` | Application-specific name |
 
 ### 3.2 SMTP Variables
 
@@ -201,7 +199,6 @@ The current `.env.example` needs updating to reflect production conventions:
 ```bash
 DATABASE_URL=postgres://sv_app:CHANGE_ME@localhost:5434/svensktvin
 APP_HOST=http://localhost:5173
-SESSION_COOKIE_NAME=sv_session
 NODE_ENV=development
 SMTP_HOST=
 SMTP_PORT=587
@@ -232,11 +229,11 @@ SMTP_FROM=noreply@svensktvin.se
 # Ensure dependencies are installed
 npm ci --production
 
-# Build (NODE_ENV=production enables Node adapter)
-NODE_ENV=production DATABASE_URL=<prod_db_url> npm run build
+# Build
+npm run build
 
 # Verify output
-ls .svelte-kit/output/server/
+ls build/
 ```
 
 ### 4.3 Run Production Server
@@ -245,15 +242,14 @@ ls .svelte-kit/output/server/
 NODE_ENV=production \
 DATABASE_URL=postgres://sv_app:<prod_password>@db:5432/svensktvin \
 APP_HOST=https://svensktvin.se \
-NODE_PORT=3000 \
-node .svelte-kit/output/server/index.js
+node build/index.js
 ```
 
 ### 4.4 Process Manager (PM2)
 
 ```bash
 npm i -g pm2
-pm2 start .svelte-kit/output/server/index.js --name svensktvin
+pm2 start build/index.js --name svensktvin
 pm2 save
 pm2 startup  # auto-start on boot
 pm2 monit    # monitoring
@@ -449,7 +445,7 @@ npm ci --production
 NODE_ENV=production DATABASE_URL=<prod_url> npm run build
 
 # 3. Start with PM2
-pm2 start .svelte-kit/output/server/index.js --name svensktvin -- \
+pm2 start build/index.js --name svensktvin -- \
   --port 3000
 
 # 4. Configure Nginx + SSL
@@ -508,7 +504,7 @@ zcat /backups/svensktvin_YYYYMMDD.sql.gz | psql postgres://sv_app@localhost:5434
 ```bash
 pm2 stop svensktvin
 # Or kill all app processes:
-pkill -f 'svelte-kit/output/server'
+pkill -f 'build/index.js'
 ```
 
 ---

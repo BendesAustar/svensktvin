@@ -52,7 +52,7 @@ cp .env.example .env
 ```
 
 ### 4. Docker Compose — App Service (Missing)
-The current `docker-compose.yml` only defines the `db` service. Add:
+The current `docker-compose.yml` only defines the `db` service. A `Dockerfile` is included in the repo (multi-stage Node 20 Alpine build). Add the `app` service:
 
 ```yaml
 services:
@@ -67,7 +67,6 @@ services:
       DATABASE_URL: postgres://sv_app:${PG_PASSWORD}@db:5432/svensktvin
       APP_HOST: https://svensktvin.se
       NODE_ENV: production
-      SESSION_COOKIE_NAME: sv_session
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
@@ -115,9 +114,9 @@ find /backups -name 'svensktvin_*.sql.gz' -mtime +30 -delete
 
 ### 9. Startup on Boot
 ```bash
-# PM2 systemd integration
+# PM2 systemd integration (bare-metal deploy only, not needed if using Docker)
 pm2 startup systemd
-pm2 start server.js --name svensktvin
+pm2 start build/index.js --name svensktvin
 pm2 save
 ```
 
@@ -137,7 +136,7 @@ The admin user is created via SQL (see §2 above). After creation, the operator:
 | Authentication | `/login` → `/auth/verify` | Magic link, 15-min expiry |
 | Onboarding | `/onboard` | Creates first vineyard |
 | Vineyard dashboard | `/vineyard/[id]` | Home page per vineyard |
-| Blocks management | `/vineyard/[id]/blocks` | Create/edit blocks |
+| Blocks management | `/vineyard/[id]` (dashboard) | Create/edit blocks from vineyard page |
 | Harvest records | `/vineyard/[id]/harvest/new` | Record harvest data |
 | Settings | `/vineyard/[id]/settings` | Update vineyard, manage members |
 | Benchmarks | `/benchmarks` | Aggregate statistics |
