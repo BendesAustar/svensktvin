@@ -46,7 +46,7 @@ func Load(path string) (*Config, error) {
 				Port: envInt("API_PORT", 9091),
 			},
 			Database: DatabaseConfig{
-				URL: envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin"),
+				URL: envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5433/svensktvin"),
 			},
 			Auth: AuthConfig{
 				SessionExpiry: 30 * 24 * time.Hour,

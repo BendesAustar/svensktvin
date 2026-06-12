@@ -7,7 +7,7 @@ Go REST API for the Svenskt Vin viticulture registry system.
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  SvelteKit   │────▶│  Go API      │────▶│  Postgres    │
-│  (SSR + SPA) │  │  │  (core-api)  │  │  │  :5434       │
+│  (SSR + SPA) │  │  │  (core-api)  │  │  │  :5433       │
 │  :5173       │◀───│  :9091       │◀───│  svensktvin  │
 └──────────────┘     └──────────────┘     └──────────────┘
 ```

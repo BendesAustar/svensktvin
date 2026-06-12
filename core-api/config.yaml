@@ -3,7 +3,7 @@ api:
   port: 9091
 
 database:
-  url: "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin"
+  url: "postgres://sv_app:sv_dev_pass@localhost:5433/svensktvin"
 
 auth:
   session_expiry: "720h"  # 30 days
