@@ -219,8 +219,12 @@ SMTP_FROM=noreply@svensktvin.se
 | # | Fix | Priority | Status |
 |---|-----|----------|--------|
 | 4.1.1 | Port alignment — scripts, `.env.example`, README use 5434 | **High** | ✅ Done |
-| 4.1.2 | Add `.svelte-kit` to `.gitignore` | **Low** | Verify |
+| 4.1.2 | Add `.svelte-kit` to `.gitignore` | **Low** | ✅ Done |
 | 4.1.3 | Handle `err.code` type in edit routes | **Medium** | ✅ Done (`blocks/[blockId]/edit`, `blocks/new`) |
+| 4.1.4 | Privacy/Terms pages | **High** | ✅ Done (`/privacy`, `/terms`) |
+| 4.1.5 | GDPR endpoints (delete, export) | **High** | ✅ Done (`/api/account/delete`, `/api/account/export`) |
+| 4.1.6 | Cookie notice | **Medium** | ✅ Done (layout-level banner) |
+| 4.1.7 | Settings page nested form fix | **High** | ✅ Done (three-form structure) |
 
 ### 4.2 Build Process
 
@@ -379,11 +383,11 @@ Monitor: `https://svensktvin.se/health` every 5 minutes.
 
 ### 8.2 Required Before Launch
 
-- [ ] Privacy policy page (`/privacy`)
-- [ ] Terms of service page (`/terms`)
-- [ ] Data export endpoint (`/api/account/export`)
-- [ ] Account deletion endpoint (`/api/account/delete`) — currently missing
-- [ ] Cookie notice on first visit
+- [x] Privacy policy page (`/privacy`)
+- [x] Terms of service page (`/terms`)
+- [x] Data export endpoint (`/api/account/export`) — GET, returns full user + vineyard data
+- [x] Account deletion endpoint (`/api/account/delete`) — POST, checks vineyard ownership first
+- [x] Cookie notice on first visit — dismissible banner, sets cookie_consent
 
 ### 8.3 Data Retention
 
