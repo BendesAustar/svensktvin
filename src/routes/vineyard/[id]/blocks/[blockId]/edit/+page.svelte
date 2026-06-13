@@ -5,8 +5,62 @@
   export let form: ActionData;
   export let data: PageData;
 
-  const { block, varieties } = data;
-  const { id: vineyardId } = block;
+  const { block } = data;
+  const { vineyard_id: vineyardId } = block;
+
+  let searchQuery = block.variety_name ?? '';
+  let selectedVarietyId = block.variety_id;
+  let searchResults: Array<{ id: number; name: string; score: number; piwi: boolean; color: string }> = [];
+  let highConfidence = false;
+  let customVarietyName = '';
+  let searching = false;
+  let searchError = '';
+
+  async function searchVarieties(q: string) {
+    if (!q || q.length < 2) {
+      searchResults = [];
+      highConfidence = false;
+      return;
+    }
+    searching = true;
+    searchError = '';
+    try {
+      const res = await fetch(`/api/varieties/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json() as { matches: typeof searchResults; high_confidence: boolean };
+      searchResults = data.matches;
+      highConfidence = data.high_confidence;
+      if (data.high_confidence && data.matches.length > 0) {
+        selectVariety(data.matches[0].id, data.matches[0].name);
+      }
+    } catch {
+      searchError = 'Sökningen misslyckades.';
+      searchResults = [];
+    } finally {
+      searching = false;
+    }
+  }
+
+  function selectVariety(id: number, name: string) {
+    selectedVarietyId = id;
+    searchQuery = name;
+    searchResults = [];
+    highConfidence = false;
+    customVarietyName = '';
+  }
+
+  function useCustom() {
+    selectedVarietyId = null;
+    customVarietyName = searchResults[0]?.name ?? '';
+    searchResults = [];
+    highConfidence = false;
+  }
+
+  function resetVariety() {
+    selectedVarietyId = null;
+    customVarietyName = '';
+    searchQuery = '';
+    searchResults = [];
+  }
 </script>
 
 <svelte:head><title>Redigera block: {block.block_name} — Svenskt Vin</title></svelte:head>
@@ -24,16 +78,45 @@
     <input id="block_name" type="text" name="block_name" required value={block.block_name}
       style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
 
-    <label for="variety_id" style="display:block;margin-top:1rem;margin-bottom:0.25rem;font-size:0.9rem">Sort <span style="color:#c62828">*</span></label>
-    <select id="variety_id" name="variety_id" required
-      style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box">
-      <option value="">Välj sort</option>
-      {#each varieties as variety}
-        <option value={variety.id}>
-          {variety.name} ({variety.color}{#if variety.piwi} · PIWI{/if})
-        </option>
-      {/each}
-    </select>
+    <label for="variety-search" style="display:block;margin-top:1rem;margin-bottom:0.25rem;font-size:0.9rem">Sort <span style="color:#c62828">*</span></label>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+      <input
+        id="variety-search"
+        type="text"
+        placeholder="Sök sort..."
+        value={searchQuery}
+        oninput={(e) => { searchQuery = (e.target as HTMLInputElement).value; searchVarieties(searchQuery); }}
+        style="flex:1;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box"
+      />
+    </div>
+
+    {#if searching}
+      <p style="color:#888;font-size:0.9rem">Söker...</p>
+    {:else if searchError}
+      <p style="color:#c62828;font-size:0.9rem">{searchError}</p>
+    {:else if selectedVarietyId !== null}
+      <p style="color:#2d6a2d;font-size:0.9rem;margin:0.25rem 0">✓ {searchQuery}</p>
+    {:else if searchResults.length > 0}
+      <ul style="list-style:none;padding:0;margin-bottom:0.5rem;border:1px solid #eee;border-radius:4px">
+        {#each searchResults as result}
+          <button type="button" tabindex="0" style="display:block;width:100%;text-align:left;padding:0.5rem 0.75rem;border-bottom:1px solid #f0f0f0;cursor:pointer;background:none;border-left:none;border-right:none;border-top:none"
+              onclick={() => selectVariety(result.id, result.name)}>
+            {result.name}
+            <span style="color:#888;font-size:0.8rem"> ({result.color}{#if result.piwi} · PIWI{/if})</span>
+          </button>
+        {/each}
+      </ul>
+      <button type="button" onclick={useCustom}
+        style="padding:0.4rem 0.8rem;background:none;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:0.85rem">
+        Ingen av dessa — använd detta namn
+      </button>
+    {:else if searchQuery.length >= 2}
+      <p style="color:#888;font-size:0.9rem">Inga träffar. Sorten läggs till för granskning.</p>
+    {/if}
+
+    <!-- Hidden input for variety_id -->
+    <input type="hidden" name="variety_id" value={selectedVarietyId ?? ''} />
+    <input type="hidden" name="variety_name" value={customVarietyName} />
 
     <fieldset style="border:1px solid #ddd;padding:1rem;border-radius:4px;margin-top:1rem;margin-bottom:1rem">
       <legend style="font-weight:600;padding:0 0.5rem">Blockinformation</legend>

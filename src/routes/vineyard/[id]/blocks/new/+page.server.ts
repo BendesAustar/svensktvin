@@ -54,9 +54,10 @@ export const actions: Actions = {
 
     // If variety_name provided (new review_needed variety)
     if (!variety_id && variety_name) {
+      // Normalize to Title Case (initcap) to prevent ALL CAPS entries
       const [result] = await sql`
         INSERT INTO varieties (name, piwi, color, status, submitted_by_vineyard_id)
-        VALUES (${variety_name}, false, 'other', 'review_needed', ${vineyardId})
+        VALUES ((SELECT string_agg(initcap(word), ' ') FROM regexp_split_to_table(${variety_name}, '\s+'))), false, 'other', 'review_needed', ${vineyardId})
         ON CONFLICT (LOWER(name)) DO NOTHING
         RETURNING id
       `;

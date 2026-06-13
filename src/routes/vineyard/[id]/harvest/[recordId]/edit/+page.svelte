@@ -1,18 +1,18 @@
 <!-- src/routes/vineyard/[id]/harvest/[recordId]/edit/+page.svelte -->
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   import type { ActionData, PageData } from './$types';
   export let form: ActionData;
   export let data: PageData;
 
   const { record, blocks } = data;
-  const { id: vineyardId } = record;
 </script>
 
 <svelte:head><title>Redigera skörd {record.harvest_year} — Svenskt Vin</title></svelte:head>
 
 <main style="max-width:600px;margin:5vh auto;padding:0 1rem;font-family:sans-serif">
-  <a href="/vineyard/{vineyardId}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
+  <a href="/vineyard/{$page.params.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
   <h1 style="margin:0.5rem 0">Redigera skörd {record.harvest_year}</h1>
 
   <form method="POST" use:enhance>

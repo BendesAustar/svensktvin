@@ -2,9 +2,8 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
-  import type { ActionData, PageData } from './$types';
+  import type { ActionData } from './$types';
   export let form: ActionData;
-  export let data: PageData;
 
   let searchQuery = '';
   let searchResults: Array<{ id: number; name: string; score: number; piwi: boolean; color: string }> = [];
@@ -59,7 +58,7 @@
 <svelte:head><title>Nytt block — Svenskt Vin</title></svelte:head>
 
 <main style="max-width:600px;margin:5vh auto;padding:0 1rem;font-family:sans-serif">
-  <a href="/vineyard/{data.vineyard.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
+  <a href="/vineyard/{$page.params.id}" style="color:#555;font-size:0.9rem">← Tillbaka</a>
   <h1 style="margin:0.5rem 0">Nytt block</h1>
 
   <form method="POST" use:enhance>

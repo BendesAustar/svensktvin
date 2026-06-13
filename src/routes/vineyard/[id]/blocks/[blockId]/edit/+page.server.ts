@@ -26,21 +26,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   `;
   if (!block) throw error(404, 'Blocket hittades inte.');
 
-  const varieties = await sql`
-    SELECT id, name, piwi, color, status
-    FROM varieties
-    ORDER BY name
-  `;
-
   return {
     block,
-    varieties: varieties.map((v: Record<string, unknown>) => ({
-      id: v.id,
-      name: v.name,
-      color: v.color,
-      piwi: v.piwi,
-      status: v.status
-    })),
     role: member.role
   };
 };
@@ -54,6 +41,8 @@ export const actions: Actions = {
     const data = await request.formData();
 
     const block_name = (data.get('block_name') as string)?.trim();
+    const variety_id = data.get('variety_id') ? Number(data.get('variety_id')) : null;
+    const variety_name = (data.get('variety_name') as string)?.trim() || null;
     const area_ha = data.get('area_ha') ? Number(data.get('area_ha')) : null;
     const vine_count = data.get('vine_count') ? Number(data.get('vine_count')) : null;
     const planting_year = data.get('planting_year') ? Number(data.get('planting_year')) : null;
@@ -66,10 +55,33 @@ export const actions: Actions = {
     if (!block_name) return fail(400, { error: 'Blocknamn krävs.' });
     if (!area_ha || area_ha <= 0) return fail(400, { error: 'Area måste vara större än 0.' });
 
+    // Handle variety change
+    let newVarietyId: number | null = variety_id;
+    if (!variety_id && variety_name) {
+      // New variety selected (custom name from typeahead)
+      const [result] = await sql`
+        INSERT INTO varieties (name, piwi, color, status, submitted_by_vineyard_id)
+        VALUES (${variety_name}, false, 'other', 'review_needed', ${vineyardId})
+        ON CONFLICT (LOWER(name)) DO NOTHING
+        RETURNING id
+      `;
+      if (result) {
+        newVarietyId = result.id;
+      } else {
+        // Already exists
+        const [existing] = await sql`
+          SELECT id FROM varieties WHERE LOWER(name) = LOWER(${variety_name})
+        `;
+        if (!existing) return fail(500, { error: 'Kunde inte skapa sort. Försök igen.' });
+        newVarietyId = existing.id;
+      }
+    }
+
     try {
       await sql`
         UPDATE blocks SET
           block_name = ${block_name},
+          variety_id = ${newVarietyId},
           area_ha = ${area_ha},
           vine_count = ${vine_count},
           planting_year = ${planting_year},
