@@ -19,11 +19,11 @@
 </script>
 
 {#if data.user}
-  <header style="padding:0.5rem 1rem;background:#f5f5f5;display:flex;justify-content:space-between;align-items:center;font-family:sans-serif">
-    <span style="font-weight:600">Svenskt Vin</span>
+  <header style="padding:0.5rem 1rem;background:#f5f5f5;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;align-items:center;font-family:sans-serif">
+    <a href="/" style="text-decoration:none;font-weight:600;font-size:1.05rem;color:#2d6a2d">🍷 Svenskt Vin</a>
     <form method="POST" action="/logout">
-      <button type="submit" style="background:none;border:none;cursor:pointer;color:#555">
-        Logga ut ({data.user.email})
+      <button type="submit" style="background:none;border:none;cursor:pointer;color:#555;font-size:0.85rem">
+        Logga ut
       </button>
     </form>
   </header>

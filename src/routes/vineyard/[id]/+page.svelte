@@ -24,9 +24,7 @@
       {#if vineyard.organic && vineyard.biodynamic} · {/if}
       {#if vineyard.biodynamic}🌀 Biodynamisk{/if}
     </p>
-    {#if role === 'owner'}
-      <a href="/vineyard/{vineyard.id}/settings" style="font-size:0.85rem;color:#2d6a2d">⚙️ Inställningar</a>
-    {/if}
+
   </div>
 
   <!-- Benchmark teaser -->
