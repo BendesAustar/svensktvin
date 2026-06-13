@@ -14,10 +14,10 @@
 <main
   style="max-width:420px;margin:15vh auto;padding:0 1rem;font-family:sans-serif"
 >
-  {#if data.error}
+  {#if form?.error}
     <!-- Invalid/expired invite -->
     <div style="background:#ffebee;padding:1rem;border-radius:4px;margin-bottom:1rem">
-      <p style="margin:0;color:#c62828;font-size:0.95rem">❌ {data.error}</p>
+      <p style="margin:0;color:#c62828;font-size:0.95rem">❌ {form.error}</p>
     </div>
     <a href="/login" style="color:#2d6a2d;font-size:0.9rem">← Tillbaka till inloggning</a>
   {:else if data.hasAccount}
@@ -27,7 +27,7 @@
       style="background:#e3f2fd;padding:1rem;border-radius:4px;margin-bottom:1rem;border-left:4px solid #1976d2"
     >
       <p style="margin:0 0 0.5rem;font-size:0.95rem">
-        Det finns redan ett konto för <strong>{data.email}</strong>.
+        Det finns redan ett konto för <strong>{data.invite?.email}</strong>.
       </p>
       <p style="margin:0 0 0.5rem;font-size:0.85rem;color:#555">
         Du har blivit inbjuden att gå med i{' '}
@@ -67,7 +67,7 @@
         type="email"
         name="email"
         required
-        value={data.email}
+        value={data.invite?.email}
         readonly
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box;background:#f5f5f5"
       />

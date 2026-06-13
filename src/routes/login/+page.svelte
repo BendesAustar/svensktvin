@@ -12,6 +12,7 @@
     showPassword?: boolean;
     password?: string;
     membershipEmail?: string;
+    showMembershipForm?: boolean;
   }
 
   export let form: Form;
@@ -19,6 +20,10 @@
 
   function togglePassword() {
     form.showPassword = !form.showPassword;
+  }
+
+  function toggleMembershipForm() {
+    form.showMembershipForm = !form.showMembershipForm;
   }
 </script>
 
@@ -58,6 +63,8 @@
 
     <!-- Password login form (error state) -->
     <form method="POST" use:enhance>
+      <input type="hidden" name="action" value="login_password" />
+      <input type="hidden" name="invite_token" value="{data.inviteToken ?? ''}" />
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
       <input
         id="email-input"
@@ -88,8 +95,6 @@
 
       <button
         type="submit"
-        name="action"
-        value="login_password"
         style="width:100%;margin-top:0.75rem;padding:0.7rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;font-size:1rem;cursor:pointer"
       >
         Logga in
@@ -112,6 +117,8 @@
 
     <!-- Password login form (default) -->
     <form method="POST" use:enhance>
+      <input type="hidden" name="action" value="login_password" />
+      <input type="hidden" name="invite_token" value="{data.inviteToken ?? ''}" />
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
       <input
         id="email-input"
@@ -140,8 +147,6 @@
 
       <button
         type="submit"
-        name="action"
-        value="login_password"
         style="width:100%;margin-top:0.75rem;padding:0.7rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;font-size:1rem;cursor:pointer"
       >
         Logga in
@@ -176,12 +181,13 @@
         <p style="margin:0 0 0.75rem;font-size:0.8rem;color:#666;text-align:center">
           Eller om du behöver bli inbjuden först:
         </p>
-        <a
-          href="#membership"
+        <button
+          type="button"
+          on:click={toggleMembershipForm}
           style="display:block;text-align:center;padding:0.6rem;width:100%;background:#f5f5f5;color:#555;border:1px solid #ddd;border-radius:4px;font-size:0.9rem;cursor:pointer;text-decoration:none"
         >
           Begär medlemskap
-        </a>
+        </button>
       {/if}
     </div>
 
@@ -192,6 +198,7 @@
           Skicka en förfrågan till oss. Vi godkänner och skickar en inbjudningslänk via e-post.
         </p>
         <form method="POST" use:enhance>
+          <input type="hidden" name="action" value="request_membership" />
           <label for="membership-email" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
           <input
             id="membership-email"
@@ -215,8 +222,6 @@
 
           <button
             type="submit"
-            name="action"
-            value="request_membership"
             style="width:100%;margin-top:1rem;padding:0.7rem;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:4px;font-size:1rem;cursor:pointer"
           >
             Skicka förfrågan

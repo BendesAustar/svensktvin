@@ -67,7 +67,7 @@ export const load: PageServerLoad = async ({ url }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, url }) => {
+  default: async ({ request, url, cookies }) => {
     const data = await request.formData();
     const name = (data.get('name') as string)?.trim();
     const password = (data.get('password') as string) ?? '';
@@ -153,10 +153,13 @@ export const actions: Actions = {
     await updateLastLogin(user.id);
 
     // Set secure session cookie
-    request.headers.set(
-      'Set-Cookie',
-      `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`
-    );
+    cookies.set('session_id', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+    });
 
     throw redirect(302, '/vineyard');
   },

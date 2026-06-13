@@ -31,16 +31,11 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
     // User is logged in — check if their email matches the invite
     const userEmail = locals.user?.email ?? '';
     if (userEmail.toLowerCase() !== invite.email.toLowerCase()) {
-      // Logged in with wrong account — clear session and redirect to login
-      const sessionId = cookies.get('session_id');
-      if (sessionId) {
-        await sql`DELETE FROM sessions WHERE id = ${sessionId}`;
-      }
-      cookies.delete('session_id', { path: '/' });
-      throw redirect(303, `/login?invite=${encodeURIComponent(token)}`);
+      // Logged in with different email — redirect to confirmation page
+      throw redirect(303, `/invite/confirm?token=${encodeURIComponent(token)}&invite_email=${encodeURIComponent(invite.email)}&current_email=${encodeURIComponent(userEmail)}`);
     }
 
-    // Add to vineyard (idempotent — ON CONFLICT handles duplicates)
+    // Email matches — add to vineyard (idempotent — ON CONFLICT handles duplicates)
     try {
       const userId = locals.user!.id;
       await sql`
