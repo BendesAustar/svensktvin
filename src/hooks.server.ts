@@ -6,9 +6,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   const sessionId = event.cookies.get('session_id');
   event.locals.user = sessionId ? await getSession(sessionId) : null;
   const response = await resolve(event);
-  // Secure cookie attributes — must use headers.set() after resolve
+  // Secure cookie attributes — must use headers.append() after resolve
+  // Secure flag only in production (localhost dev needs it without Secure)
   if (sessionId) {
-    const cookieValue = `session_id=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
+    const secure = process.env.NODE_ENV === 'production' ? 'Secure' : '';
+    const cookieValue = `session_id=${sessionId}; HttpOnly; ${secure} SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`;
     response.headers.append('set-cookie', cookieValue);
   }
   return response;

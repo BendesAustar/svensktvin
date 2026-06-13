@@ -1,13 +1,25 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { createMagicLink, createSession, getUserByEmail } from '$lib/server/auth';
-import { randomBytes } from 'node:crypto';
-import type { Actions, PageServerLoad, ServerLoadEvent } from './$types';
-import { sql } from '$lib/server/db';
+import { createSession, getUserByEmail } from '$lib/server/auth';
+import type { Actions, PageServerLoad } from './$types';
+import { sql } from '$lib/server/db.js';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+interface InviteRow {
+  id: number;
+  email: string;
+  role: string;
+  vineyard_id: number;
+  used: boolean;
+  expires_at: Date;
+  vineyard_name: string;
+}
 
 // ---------------------------------------------------------------------------
 // Load: validate invite token, pre-fill email
 // ---------------------------------------------------------------------------
-export const load: PageServerLoad = async ({ url, cookies }) => {
+export const load: PageServerLoad = async ({ url }) => {
   const inviteToken = url.searchParams.get('token');
   const email = url.searchParams.get('email') ?? '';
 
@@ -15,18 +27,13 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
     throw redirect(303, '/login');
   }
 
-  // Validate invite token
-  const [invite] = await sql<{
-    id: number;
-    email: string;
-    role: string;
-    vineyard_id: number;
-    used: boolean;
-    expires_at: Date;
-  }>`
-    SELECT id, email, role, vineyard_id, used, expires_at
-    FROM pending_invites
-    WHERE token = ${inviteToken} AND used = false
+  // Validate invite token + load vineyard name
+  const [invite] = await sql<InviteRow[]>`
+    SELECT pi.id, pi.email, pi.role, pi.vineyard_id, pi.used, pi.expires_at,
+           v.name AS vineyard_name
+    FROM pending_invites pi
+    JOIN vineyards v ON v.id = pi.vineyard_id
+    WHERE pi.token = ${inviteToken} AND pi.used = false
     LIMIT 1
   `;
 
@@ -42,7 +49,13 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
   const existingUser = await getUserByEmail(invite.email);
 
   return {
-    invite,
+    invite: {
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      vineyard_id: invite.vineyard_id,
+      vineyard: { name: invite.vineyard_name }
+    },
     email: invite.email,
     hasAccount: !!existingUser,
     inviteToken
@@ -53,8 +66,8 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 // Actions: create account and auto-join vineyard
 // ---------------------------------------------------------------------------
 export const actions: Actions = {
-  default: async (event: ServerLoadEvent) => {
-    const data = await event.request.formData();
+  default: async ({ request, cookies }) => {
+    const data = await request.formData();
     const email = (data.get('email') as string)?.trim().toLowerCase();
     const name = (data.get('name') as string)?.trim();
     const inviteToken = (data.get('invite_token') as string) ?? '';
@@ -72,13 +85,7 @@ export const actions: Actions = {
     }
 
     // Validate invite token
-    const [invite] = await sql<{
-      id: number;
-      vineyard_id: number;
-      role: string;
-      used: boolean;
-      expires_at: Date;
-    }>`
+    const [invite] = await sql<InviteRow[]>`
       SELECT id, vineyard_id, role, used, expires_at
       FROM pending_invites
       WHERE token = ${inviteToken} AND used = false
@@ -104,7 +111,7 @@ export const actions: Actions = {
     }
 
     // Create user account
-    const [user] = await sql<{ id: number }>`
+    const [user] = await sql<{ id: number }[]>`
       INSERT INTO users (name, email, active)
       VALUES (${name}, ${email}, true)
       RETURNING id
@@ -121,8 +128,15 @@ export const actions: Actions = {
       UPDATE pending_invites SET used = true WHERE id = ${invite.id}
     `;
 
-    // Create session
-    await createSession(user.id, event.cookies);
+    // Create session + set cookie
+    const sessionId = await createSession(user.id);
+    cookies.set('session_id', sessionId, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60
+    });
 
     // Redirect to vineyard
     throw redirect(303, `/vineyard/${invite.vineyard_id}`);
