@@ -3,10 +3,13 @@ import { redirect, error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { sql } from '$lib/server/db.js';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+const LOCK_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+export const load: PageServerLoad = async ({ params, locals, url }) => {
   if (!locals.user) throw redirect(303, '/login');
 
   const vineyardId = Number(params.id);
+  const blockId = url.searchParams.get('block_id') ? Number(url.searchParams.get('block_id')) : null;
 
   const [member] = await sql`
     SELECT role FROM vineyard_members
@@ -22,6 +25,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     ORDER BY b.block_name
   `;
 
+  // Check lock status
+  const [lock] = await sql`
+    SELECT bl.id, bl.user_id, bl.locked_at, bl.expires_at, u.name, u.email
+    FROM block_locks bl
+    JOIN users u ON u.id = bl.user_id
+    WHERE bl.block_id = ${blockId}
+      AND bl.expires_at > now()
+    LIMIT 1
+  `;
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -31,7 +44,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       block_name: b.block_name,
       variety_name: b.variety_name
     })),
-    years
+    years,
+    lock: lock ? {
+      id: lock.id,
+      lockedBy: lock.name,
+      lockedByEmail: lock.email,
+      expiresAt: lock.expires_at
+    } : null
   };
 };
 
@@ -75,6 +94,18 @@ export const actions: Actions = {
       return fail(400, { error: `En skörd för ${harvest_year} finns redan.` });
     }
 
+    // Verify user holds an active lock on this block
+    const [lock] = await sql`
+      SELECT id FROM block_locks
+      WHERE block_id = ${block_id}
+        AND user_id = ${locals.user!.id}
+        AND expires_at > now()
+      LIMIT 1
+    `;
+    if (!lock) {
+      return fail(409, { error: 'Du har inte ett aktivt lås på detta block. Lås upp blocket först.' });
+    }
+
     try {
       await sql`
         INSERT INTO harvest_records (
@@ -89,6 +120,8 @@ export const actions: Actions = {
           ${sold_kg}, ${discarded_kg}
         )
       `;
+      // Release lock on successful save
+      await sql`DELETE FROM block_locks WHERE id = ${lock.id}`;
     } catch (err) {
       console.error('Failed to create harvest record:', err);
       return fail(500, { error: 'Kunde inte spara skörd. Försök igen.' });

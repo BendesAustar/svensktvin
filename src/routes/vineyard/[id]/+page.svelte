@@ -1,9 +1,32 @@
 <!-- src/routes/vineyard/[id]/+page.svelte -->
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import type { PageData } from './$types';
-  export let data: PageData;
 
-  const { vineyard, blocks, benchmarkTeaser, role } = data;
+  const { data }: { data: PageData } = $props();
+  const { vineyard, blocks, benchmarkTeaser } = data;
+  let locking = $state<number | null>(null);
+
+  async function harvestBlock(blockId: number) {
+    locking = blockId;
+    const res = await fetch(`/vineyard/${vineyard.id}/blocks/${blockId}/harvest/lock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.locked) {
+        await goto(`/vineyard/${vineyard.id}/harvest/new?block_id=${blockId}`);
+      }
+    } else if (res.status === 409) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.message || 'Blocket redigeras just nu av någon annan.');
+    } else {
+      alert('Kunde inte låsa blocket. Försök igen.');
+    }
+    locking = null;
+  }
 </script>
 
 <svelte:head>
@@ -62,7 +85,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each blocks as block}
+          {#each blocks as block (block.id)}
             <tr style="border-bottom:1px solid #f0f0f0">
               <td style="padding:0.75rem 0.5rem">
                 <strong>{block.block_name}</strong>
@@ -87,7 +110,14 @@
                 {/if}
               </td>
               <td style="padding:0.75rem 0.5rem;text-align:right">
-                <a href="/vineyard/{vineyard.id}/blocks/{block.id}/edit" style="color:#2d6a2d;font-size:0.85rem">Redigera</a>
+                {#if locking === block.id}
+                  <span style="padding:0.3rem 0.75rem;font-size:0.85rem;color:#2d6a2d">⏳</span>
+                {:else}
+                  <button onclick={() => harvestBlock(Number(block.id))}
+                    style="padding:0.3rem 0.75rem;background:#2d6a2d;color:#fff;border:none;border-radius:3px;font-size:0.85rem;cursor:pointer">
+                    🌾 Skörd
+                  </button>
+                {/if}
               </td>
             </tr>
           {/each}
@@ -95,10 +125,4 @@
       </table>
     {/if}
   </div>
-
-  <!-- Harvest actions -->
-  <a href="/vineyard/{vineyard.id}/harvest/new"
-    style="display:inline-block;padding:0.75rem 1.5rem;background:#2d6a2d;color:#fff;border-radius:4px;text-decoration:none;font-size:1rem;margin-right:0.5rem">
-    🌾 Registrera skörd
-  </a>
 </main>

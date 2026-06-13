@@ -2,7 +2,6 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { sql } from '$lib/server/db.js';
-import { createSession } from '$lib/server/auth.js';
 
 export const GET: RequestHandler = async ({ url, cookies, locals }) => {
   const token = url.searchParams.get('token');
@@ -10,7 +9,7 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
   // Validate the invite
   const [invite] = await sql`
-    SELECT pi.id, pi.email, pi.vineyard_id, pi.role, pi.expires_at
+    SELECT pi.id, pi.email, pi.vineyard_id, pi.role
     FROM pending_invites pi
     WHERE pi.token = ${token}
       AND pi.used = false
@@ -31,10 +30,16 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
     // User is logged in — check if their email matches the invite
     const userEmail = locals.user?.email ?? '';
     if (userEmail.toLowerCase() !== invite.email.toLowerCase()) {
-      throw error(403, 'Ditt konto matchar inte inbjudan. Logga in med rätt e-postadress.');
+      // Logged in with wrong account — clear session and redirect to login
+      const sessionId = cookies.get('session_id');
+      if (sessionId) {
+        await sql`DELETE FROM sessions WHERE id = ${sessionId}`;
+      }
+      cookies.delete('session_id', { path: '/' });
+      throw redirect(303, `/login?invite=${encodeURIComponent(token)}`);
     }
 
-    // Add to vineyard
+    // Add to vineyard (idempotent — ON CONFLICT handles duplicates)
     try {
       const userId = locals.user!.id;
       await sql`
