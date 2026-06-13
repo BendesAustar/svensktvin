@@ -9,7 +9,6 @@
   $: role = $page.data.role;
   $: path = $page.url.pathname;
   $: isHome = /^\/vineyard\/\d+$/.test(path);
-  $: isBlocks = path.includes('/blocks');
   $: isHarvest = path.includes('/harvest');
   $: isBenchmark = path.includes('/benchmark');
   $: isSettings = path.includes('/settings');
@@ -20,9 +19,6 @@
     <div style="display:flex;gap:0.25rem;align-items:center">
       <a href="/vineyard/{vineyardId}" style="color:#555;font-size:0.85rem;text-decoration:none;padding:0.4rem 0.6rem;border-radius:4px;{isHome ? 'color:#2d6a2d;background:#e8f5e9;font-weight:500' : 'hover:#f5f5f5'}">
         ← {vineyardName}
-      </a>
-      <a href="/vineyard/{vineyardId}" style="color:#555;font-size:0.85rem;text-decoration:none;padding:0.4rem 0.6rem;border-radius:4px;{isHome ? 'color:#2d6a2d;background:#e8f5e9;font-weight:500' : ''}">
-        Block
       </a>
       <a href="/vineyard/{vineyardId}/harvest/new" style="color:#555;font-size:0.85rem;text-decoration:none;padding:0.4rem 0.6rem;border-radius:4px;{isHarvest ? 'color:#2d6a2d;background:#e8f5e9;font-weight:500' : ''}">
         Skörd

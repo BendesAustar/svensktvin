@@ -37,6 +37,7 @@ function onRemoveMember(memberId: number, role: string, e: Event) {
 
       <label for="county" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Län <span style="color:#c62828">*</span></label>
       <select id="county" name="county" required
+        value={vineyard.county ?? ''}
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box">
         <option value="">Välj län</option>
         <option>Skåne</option><option>Blekinge</option><option>Gotland</option>
