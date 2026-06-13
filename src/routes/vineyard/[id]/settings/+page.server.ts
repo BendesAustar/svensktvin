@@ -90,13 +90,13 @@ export const actions: Actions = {
       }
     }
 
-    // Invite a new member by email
+    // Invite a new member by email (editors only — only owners can invite)
     if (action === 'invite_member') {
       const email = (data.get('email') as string)?.trim().toLowerCase();
       const role = data.get('role') as string;
 
-      if (!email || !role || !['owner', 'editor'].includes(role)) {
-        return fail(400, { error: 'E-post och roll krävs.' });
+      if (!email || !role || role !== 'editor') {
+        return fail(400, { error: 'Välj en e-postadress och roll (endast redaktör).' });
       }
 
       // Check if already a member
@@ -151,7 +151,7 @@ export const actions: Actions = {
         });
       } catch (err) {
         console.error('Failed to send invite:', err);
-        return fail(500, { error: 'Kunde inte skicka inbjudan. Försök igen.' });
+        return fail(500, { error: 'Kunde inte skicka inbjudan. Kontrollera SMTP-inställningarna.' });
       }
     }
 

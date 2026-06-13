@@ -133,7 +133,8 @@
       </tbody>
     </table>
 
-    <form method="POST" use:enhance style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap">
+    <!-- Invite form — standalone to avoid form prop collisions -->
+    <form method="POST" use:enhance name="invite" style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap">
       <input type="hidden" name="action" value="invite_member" />
       <div style="flex:1;min-width:180px">
         <label for="invite-email" style="display:block;margin-bottom:0.25rem;font-size:0.85rem">E-postadress</label>
@@ -145,7 +146,6 @@
         <select id="invite-role" name="role"
           style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;font-size:0.9rem">
           <option value="editor">Redaktör</option>
-          <option value="owner">Ägare</option>
         </select>
       </div>
       <button type="submit"
@@ -153,11 +153,17 @@
     </form>
     <p style="margin:0.75rem 0 0;font-size:0.8rem;color:#666">
       En inbjudan skickas per e-post. Personen kan acceptera efter att ha loggat in eller skapat ett konto.
+      Endast redaktörer kan bjudas in — ägare hanteras via medlemslistan.
     </p>
 
+    <!-- Invite result feedback -->
     {#if form?.success}
       <div style="background:#e8f5e9;padding:0.75rem 1rem;border-radius:4px;margin-top:1rem">
         <p style="margin:0;color:#2d6a2d;font-size:0.9rem">✅ Inbjudan skickad!</p>
+      </div>
+    {:else if form?.error}
+      <div style="background:#ffebee;padding:0.75rem 1rem;border-radius:4px;margin-top:1rem">
+        <p style="margin:0;color:#c62828;font-size:0.9rem">❌ {form.error}</p>
       </div>
     {/if}
   </fieldset>
