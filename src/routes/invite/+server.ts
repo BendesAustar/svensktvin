@@ -9,8 +9,9 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
   // Validate the invite
   const [invite] = await sql`
-    SELECT pi.id, pi.email, pi.vineyard_id, pi.role
+    SELECT pi.id, pi.email, pi.vineyard_id, pi.role, v.name AS vineyard_name
     FROM pending_invites pi
+    JOIN vineyards v ON v.id = pi.vineyard_id
     WHERE pi.token = ${token}
       AND pi.used = false
       AND pi.expires_at > now()
@@ -59,6 +60,9 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
     }
   }
 
-  // Not logged in — redirect to login with invite token for callback
-  throw redirect(303, `/login?invite=${encodeURIComponent(token)}`);
+  // Not logged in — redirect to register page with invite + email
+  throw redirect(
+    303,
+    `/register?token=${encodeURIComponent(token)}&email=${encodeURIComponent(invite.email)}`
+  );
 };
