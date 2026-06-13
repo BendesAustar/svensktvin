@@ -1,7 +1,8 @@
 <!-- src/routes/vineyard/[id]/settings/+page.svelte -->
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
+  export let form: ActionData;
   export let data: PageData;
 
   const { vineyard, ownerCount, members } = data;
@@ -153,5 +154,11 @@
     <p style="margin:0.75rem 0 0;font-size:0.8rem;color:#666">
       En inbjudan skickas per e-post. Personen kan acceptera efter att ha loggat in eller skapat ett konto.
     </p>
+
+    {#if form?.success}
+      <div style="background:#e8f5e9;padding:0.75rem 1rem;border-radius:4px;margin-top:1rem">
+        <p style="margin:0;color:#2d6a2d;font-size:0.9rem">✅ Inbjudan skickad!</p>
+      </div>
+    {/if}
   </fieldset>
 </main>
