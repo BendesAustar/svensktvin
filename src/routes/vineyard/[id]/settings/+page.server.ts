@@ -131,24 +131,30 @@ export const actions: Actions = {
           VALUES (${email}, ${vineyardId}, ${role}, ${token}, ${expiresAt})
         `;
 
-        // Send invite email
-        const appHost = process.env.APP_HOST ?? 'http://localhost:5173';
-        const from = process.env.SMTP_FROM ?? 'noreply@svensktvin.se';
-        const nodemailer = await import('nodemailer');
-        const transport = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT ?? 587),
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        });
-        const { text, html } = inviteEmailTemplate(appHost, vineyard.name, token);
+        // Send invite email (graceful fallback if SMTP not configured)
+        if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+          console.warn(`[INVITE] SMTP not configured. Invite to ${email} for ${vineyard.name} (${role}) stored in DB but email not sent.`);
+          console.warn(`[INVITE] Token: ${token}`);
+          console.warn(`[INVITE] Accept at: ${process.env.APP_HOST ?? 'http://localhost:5173'}/invite?token=${token}`);
+        } else {
+          const appHost = process.env.APP_HOST ?? 'http://localhost:5173';
+          const from = process.env.SMTP_FROM ?? 'noreply@svensktvin.se';
+          const nodemailer = await import('nodemailer');
+          const transport = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT ?? 587),
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+          });
+          const { text, html } = inviteEmailTemplate(appHost, vineyard.name, token);
 
-        await transport.sendMail({
-          from,
-          to: email,
-          subject: `Inbjudan till ${vineyard.name} på Svenskt Vin`,
-          text,
-          html
-        });
+          await transport.sendMail({
+            from,
+            to: email,
+            subject: `Inbjudan till ${vineyard.name} på Svenskt Vin`,
+            text,
+            html
+          });
+        }
       } catch (err) {
         console.error('Failed to send invite:', err);
         return fail(500, { error: 'Kunde inte skicka inbjudan. Kontrollera SMTP-inställningarna.' });
