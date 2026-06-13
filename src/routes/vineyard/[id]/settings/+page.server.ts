@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   if (!vineyard) throw error(404, 'Vingården hittades inte.');
 
   const members = await sql`
-    SELECT um.id, um.role, u.email, u.name
+    SELECT um.user_id AS id, um.role, u.email, u.name
     FROM vineyard_members um
     JOIN users u ON u.id = um.user_id
     WHERE um.vineyard_id = ${vineyardId}
