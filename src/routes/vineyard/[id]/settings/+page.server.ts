@@ -4,6 +4,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { sql } from '$lib/server/db.js';
 import { randomBytes, createHash } from 'crypto';
 import { inviteEmailTemplate } from '$lib/server/email.js';
+import { verifyPassword, hashPassword, updateUserPassword, passwordValidation } from '$lib/server/auth.js';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   if (!locals.user) throw redirect(303, '/login');
@@ -185,6 +186,45 @@ export const actions: Actions = {
         DELETE FROM vineyard_members
         WHERE vineyard_id = ${vineyardId} AND user_id = ${targetUserId}
       `;
+    }
+
+    // Change password
+    if (action === 'change_password') {
+      const currentPassword = data.get('current_password') as string;
+      const newPassword = data.get('new_password') as string;
+      const confirmPassword = data.get('confirm_password') as string;
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return fail(400, { passwordError: 'Fyll i alla lösenordsfält.' });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return fail(400, { passwordError: 'De nya lösenorden matchar inte.' });
+      }
+
+      const validation = passwordValidation(newPassword);
+      if (!validation.valid) {
+        return fail(400, { passwordError: validation.errors.join(' ') });
+      }
+
+      // Verify current password
+      const user = await sql`
+        SELECT password_hash FROM users WHERE id = ${locals.user!.id} LIMIT 1
+      `;
+      if (!user?.[0]?.password_hash) {
+        return fail(400, { passwordError: 'Ditt konto har inget lösenord. Logga in med inloggningslänk eller ställ in ett lösenord.' });
+      }
+
+      const valid = await verifyPassword(currentPassword, user[0].password_hash);
+      if (!valid) {
+        return fail(400, { passwordError: 'Nuvarande lösenord är felaktigt.' });
+      }
+
+      // Update password
+      const hash = await hashPassword(newPassword);
+      await updateUserPassword(locals.user!.id, hash);
+
+      return { passwordSuccess: true, success: true };
     }
 
     return { success: true };

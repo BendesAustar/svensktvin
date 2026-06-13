@@ -90,6 +90,46 @@
     </button>
   </form>
 
+  <!-- ════════════════ Password Change ════════════════ -->
+  <fieldset style="border:1px solid #ddd;padding:1rem;border-radius:4px;margin-bottom:1.5rem">
+    <legend style="font-weight:600;padding:0 0.5rem">Ändra lösenord</legend>
+
+    {#if form?.passwordSuccess}
+      <div style="background:#e8f5e9;padding:0.75rem 1rem;border-radius:4px;margin-bottom:1rem">
+        <p style="margin:0;color:#2d6a2d;font-size:0.9rem">✅ Lösenordet har ändrats.</p>
+      </div>
+    {/if}
+    {#if form?.passwordError}
+      <div style="background:#ffebee;padding:0.75rem 1rem;border-radius:4px;margin-bottom:1rem">
+        <p style="margin:0;color:#c62828;font-size:0.9rem">{form.passwordError}</p>
+      </div>
+    {/if}
+
+    <form method="POST" use:enhance>
+      <input type="hidden" name="action" value="change_password" />
+
+      <label for="current_password" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">Nuvarande lösenord</label>
+      <input id="current_password" type="password" name="current_password" required
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <label for="new_password" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Nytt lösenord</label>
+      <input id="new_password" type="password" name="new_password" required minlength="8"
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <label for="confirm_password" style="display:block;margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.9rem">Bekräfta nytt lösenord</label>
+      <input id="confirm_password" type="password" name="confirm_password" required minlength="8"
+        style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box" />
+
+      <button type="submit"
+        style="width:100%;margin-top:1rem;padding:0.7rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;font-size:1rem;cursor:pointer">
+        Uppdatera lösenord
+      </button>
+    </form>
+    <p style="margin:0.75rem 0 0;font-size:0.8rem;color:#666">
+      Lösenordet måste vara minst 8 tecken, innehålla en stor bokstav, en liten bokstav och en siffra.
+    </p>
+  </fieldset>
+
   <!-- ════════════════ Member Management ════════════════ -->
   <fieldset style="border:1px solid #ddd;padding:1rem;border-radius:4px;margin-bottom:1.5rem">
     <legend style="font-weight:600;padding:0 0.5rem">Medlemmar</legend>
