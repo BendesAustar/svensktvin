@@ -45,7 +45,7 @@ function getTransport() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
-    throw new Error('SMTP environment variables not configured');
+    return null;
   }
   return nodemailer.createTransport({ host, port, auth: { user, pass } });
 }
@@ -55,6 +55,12 @@ export async function sendMagicLink(to: string, rawToken: string): Promise<void>
   const from = process.env.SMTP_FROM ?? 'noreply@svensktvin.se';
 
   const transport = getTransport();
+  if (!transport) {
+    // SMTP not configured — log for debugging, don't throw
+    console.warn(`[sendMagicLink] SMTP not configured. Magic link for ${to} stored in DB but email not sent.`);
+    return;
+  }
+
   const { text, html } = loginEmailTemplate(appHost, rawToken);
   await transport.sendMail({
     from,

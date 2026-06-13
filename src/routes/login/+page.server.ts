@@ -1,5 +1,5 @@
 // src/routes/login/+page.server.ts
-import { fail } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getUserByEmail, createMagicLink } from '$lib/server/auth.js';
 import { sendMagicLink } from '$lib/server/email.js';
@@ -14,22 +14,21 @@ export const actions: Actions = {
     const email = (data.get('email') as string)?.trim().toLowerCase();
 
     if (!email || !email.includes('@')) {
-      return fail(400, { error: 'Ange en giltig e-postadress.' });
+      return fail(400, { error: 'Ange en giltig e-postadress.', email });
     }
-
-    const inviteToken = url.searchParams.get('invite');
 
     // Look up user — always return the same message to avoid account enumeration
     const user = await getUserByEmail(email);
     if (user) {
       const token = await createMagicLink(user.id);
       await sendMagicLink(email, token);
-      return { sent: true, inviteToken };
+      return { sent: true, inviteToken: url.searchParams.get('invite') };
     }
 
-    // Non-registered user in invite flow — let them know
+    // Non-registered user — redirect to register page with invite context
+    const inviteToken = url.searchParams.get('invite');
     if (inviteToken) {
-      return { needsRegistration: true, inviteToken };
+      throw redirect(303, `/register?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(email)}`);
     }
 
     return { sent: true };

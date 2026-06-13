@@ -4,8 +4,8 @@
   interface Form {
     error?: string;
     sent?: boolean;
-    needsRegistration?: boolean;
     inviteToken?: string | null;
+    email?: string;
   }
   export let form: Form;
 </script>
@@ -19,25 +19,16 @@
     <p style="background:#e8f5e9;padding:1rem;border-radius:4px">
       Om ett konto finns för den adressen har du fått en inloggningslänk via e-post.
     </p>
-  {:else if form?.needsRegistration}
-    <div style="padding:1rem;border-radius:4px;background:#fff3e0;margin-bottom:1rem">
-      <p style="margin:0 0 0.5rem;font-size:0.95rem">
-        Du har blivit inbjuden till en vingård, men du har inget konto än.
-      </p>
-      <p style="margin:0;font-size:0.85rem;color:#555">
-        Be den som bjöd in dig att registrera dig först, eller använd en annan e-postadress som redan är registrerad.
-      </p>
-    </div>
+  {:else if form?.error}
+    <p style="color:#c62828;margin-bottom:1rem">{form.error}</p>
     <form method="POST" use:enhance>
-      {#if form?.error}
-        <p style="color:#c62828;margin-bottom:0.5rem">{form.error}</p>
-      {/if}
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
       <input
         id="email-input"
         type="email"
         name="email"
         required
+        value="{form.email ?? ''}"
         style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:4px;font-size:1rem;box-sizing:border-box"
       />
       <button
@@ -50,9 +41,6 @@
   {:else}
     <p style="color:#555;margin-bottom:1.5rem">Ange din e-postadress för att logga in.</p>
     <form method="POST" use:enhance>
-      {#if form?.error}
-        <p style="color:#c62828;margin-bottom:0.5rem">{form.error}</p>
-      {/if}
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
       <input
         id="email-input"
