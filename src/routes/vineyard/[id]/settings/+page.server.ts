@@ -2,6 +2,8 @@
 import { redirect, error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { sql } from '$lib/server/db.js';
+import { randomBytes, createHash } from 'crypto';
+import { inviteEmailTemplate } from '$lib/server/email.js';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   if (!locals.user) throw redirect(303, '/login');
@@ -30,8 +32,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     ORDER BY um.role DESC, u.name
   `;
 
+  // Count total owners for per-member delete protection
+  const [{ count: ownerCount }] = await sql<{ count: number }[]>`
+    SELECT count(*)::int AS count FROM vineyard_members
+    WHERE vineyard_id = ${vineyardId} AND role = 'owner'
+  `;
+
   return {
     vineyard,
+    ownerCount,
     members: members.map((m: Record<string, unknown>) => ({
       id: m.id,
       role: m.role,
@@ -90,18 +99,60 @@ export const actions: Actions = {
         return fail(400, { error: 'E-post och roll krävs.' });
       }
 
-      const [user] = await sql`
-        SELECT id FROM users WHERE email = ${email} AND active = true
+      // Check if already a member
+      const [existing] = await sql`
+        SELECT 1 FROM vineyard_members
+        WHERE vineyard_id = ${vineyardId} AND user_id = (
+          SELECT id FROM users WHERE email = ${email} AND active = true LIMIT 1
+        )
       `;
-      if (!user) {
-        return fail(404, { error: 'Ingen aktiv användare med den e-postadressen.' });
+      if (existing) {
+        return fail(400, { error: 'Denna användare är redan medlem.' });
       }
 
-      await sql`
-        INSERT INTO vineyard_members (vineyard_id, user_id, role)
-        VALUES (${vineyardId}, ${user.id}, ${role})
-        ON CONFLICT (vineyard_id, user_id) DO UPDATE SET role = EXCLUDED.role
+      // Check for existing pending invite
+      const [pending] = await sql`
+        SELECT id FROM pending_invites
+        WHERE email = ${email} AND vineyard_id = ${vineyardId} AND used = false
       `;
+      if (pending) {
+        return fail(400, { error: 'En inbjudan till denna e-postadress är redan under behandling.' });
+      }
+
+      // Create pending invite
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      try {
+        const [vineyard] = await sql`SELECT name FROM vineyards WHERE id = ${vineyardId}`;
+
+        await sql`
+          INSERT INTO pending_invites (email, vineyard_id, role, token, expires_at)
+          VALUES (${email}, ${vineyardId}, ${role}, ${token}, ${expiresAt})
+        `;
+
+        // Send invite email
+        const appHost = process.env.APP_HOST ?? 'http://localhost:5173';
+        const from = process.env.SMTP_FROM ?? 'noreply@svensktvin.se';
+        const nodemailer = await import('nodemailer');
+        const transport = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT ?? 587),
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+        const { text, html } = inviteEmailTemplate(appHost, vineyard.name, token);
+
+        await transport.sendMail({
+          from,
+          to: email,
+          subject: `Inbjudan till ${vineyard.name} på Svenskt Vin`,
+          text,
+          html
+        });
+      } catch (err) {
+        console.error('Failed to send invite:', err);
+        return fail(500, { error: 'Kunde inte skicka inbjudan. Försök igen.' });
+      }
     }
 
     // Remove a member
@@ -121,7 +172,7 @@ export const actions: Actions = {
         WHERE vineyard_id = ${vineyardId} AND user_id = ${targetUserId}
       `;
       if (targetMember?.role === 'owner' && ownerCount <= 1) {
-        return fail(400, { error: 'Kan inte ta bort den siste ägaren.' });
+        return fail(400, { error: 'Kan inte ta bort den siste ägaren. Det måste alltid finnas minst en ägare.' });
       }
 
       await sql`

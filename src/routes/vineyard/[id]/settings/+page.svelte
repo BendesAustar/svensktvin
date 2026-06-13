@@ -4,18 +4,7 @@
   import type { PageData } from './$types';
   export let data: PageData;
 
-  const { vineyard, members } = data;
-
-function onRemoveMember(memberId: number, role: string, e: Event) {
-    const rid = typeof memberId === 'number' ? memberId : Number(memberId);
-    const rrole = typeof role === 'string' ? role : String(role);
-    if (rrole === 'owner') {
-      e.preventDefault();
-      alert('Kan inte ta bort ägare.');
-    } else if (!confirm('Ta bort denna användare?')) {
-      e.preventDefault();
-    }
-}
+  const { vineyard, ownerCount, members } = data;
 </script>
 
 <svelte:head><title>Inställningar: {vineyard.name} — Svenskt Vin</title></svelte:head>
@@ -120,14 +109,23 @@ function onRemoveMember(memberId: number, role: string, e: Event) {
             <td style="padding:0.5rem">{m.email}</td>
             <td style="padding:0.5rem">{m.role}</td>
             <td style="padding:0.5rem">
-              <form method="POST" use:enhance>
-                <input type="hidden" name="action" value="remove_member" />
-                <input type="hidden" name="user_id" value={m.id} />
-                <button type="submit" on:click={(e) => onRemoveMember(m.id as number, m.role as string, e)}
-                  style="padding:0.3rem 0.6rem;background:#ef5350;color:#fff;border:none;border-radius:3px;font-size:0.8rem;cursor:pointer">
-                  Ta bort
+              {#if m.role === 'owner' && ownerCount <= 1}
+                <!-- Last owner — disabled state with explanation -->
+                <button type="button" disabled
+                  style="padding:0.3rem 0.6rem;background:#fdd;border:1px solid #ef9;border-radius:3px;font-size:0.8rem;color:#8d2;font-weight:500;cursor:not-allowed;white-space:nowrap">
+                  ⚠️ Sist ägare
                 </button>
-              </form>
+              {:else}
+                <!-- Separate form for delete (no nested forms allowed) -->
+                <form method="POST" use:enhance>
+                  <input type="hidden" name="action" value="remove_member" />
+                  <input type="hidden" name="user_id" value={m.id} />
+                  <button type="submit"
+                    style="padding:0.3rem 0.6rem;background:#ef5350;color:#fff;border:none;border-radius:3px;font-size:0.8rem;cursor:pointer">
+                    Ta bort
+                  </button>
+                </form>
+              {/if}
             </td>
           </tr>
         {/each}
@@ -138,7 +136,7 @@ function onRemoveMember(memberId: number, role: string, e: Event) {
       <input type="hidden" name="action" value="invite_member" />
       <div style="flex:1;min-width:180px">
         <label for="invite-email" style="display:block;margin-bottom:0.25rem;font-size:0.85rem">E-postadress</label>
-        <input id="invite-email" type="email" name="email" required
+        <input id="invite-email" type="email" name="email" required placeholder="namn@exempel.se"
           style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;font-size:0.9rem" />
       </div>
       <div style="min-width:120px">
@@ -152,16 +150,8 @@ function onRemoveMember(memberId: number, role: string, e: Event) {
       <button type="submit"
         style="padding:0.5rem 1rem;background:#2d6a2d;color:#fff;border:none;border-radius:4px;font-size:0.9rem;cursor:pointer;white-space:nowrap">Bjud in</button>
     </form>
+    <p style="margin:0.75rem 0 0;font-size:0.8rem;color:#666">
+      En inbjudan skickas per e-post. Personen kan acceptera efter att ha loggat in eller skapat ett konto.
+    </p>
   </fieldset>
-
-  <!--
-    NOTE — Invite flow refinement needed:
-    Current: Only registered users can be invited (email must match existing user).
-    Real-world gap: Owners need to invite fellow vineyard owners who don't have accounts yet.
-    Options:
-    1. Send email invite with signup link (requires email template + route)
-    2. Let owner create account on behalf of invitee
-    3. Require owner to pre-register invitee (current) — works for small groups
-    Decision: Defer to post-golive. Current flow works for early adopter group.
-  -->
 </main>
