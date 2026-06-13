@@ -28,13 +28,30 @@
 
 **Fix:** Added `autocomplete="name"` to the name input field. Browsers should now treat it as a name field, not a password field.
 
+### ✅ RESOLVED: Login Dead-End for Non-Registered Users (P1 #1)
+
+**Root Cause:** When a non-registered user entered their email on the login page while having an `inviteToken` in the URL, the server returned `{ needsRegistration: true, inviteToken }` and the login page showed a backwards message: "Be den som bjöd in dig att registrera dig först" (ask the inviter to register you). This was backwards — users should register themselves.
+
+**Fix:** Login action now `throw redirect(303, /register?token=xxx&email=xxx)` for non-registered users with an invite token. The register page pre-fills the email and shows the vineyard name.
+
+### ✅ RESOLVED: SMTP Crash in Development (P1 #2)
+
+**Root Cause:** `getTransport()` in `email.ts` threw `Error('SMTP environment variables not configured')` when SMTP was not set. The login action's `sendMagicLink()` call crashed, returning a 500 error.
+
+**Fix:** `getTransport()` now returns `null` when SMTP is not configured. `sendMagicLink()` checks for null, logs a warning, and returns silently — magic link is still stored in DB for debugging.
+
 ### 🔄 Remaining Items
 
 #### 1. SMTP Not Configured Locally
 SMTP fallback saves invites to DB and logs tokens. Works for local testing but email won't be sent.
 - Set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in `.env` to enable email
 
-### Files Modified (this fix session)
+### Files Modified (P1 fix session)
+- `src/lib/server/email.ts` — `getTransport()` returns null instead of throwing
+- `src/routes/login/+page.server.ts` — redirect to register for non-registered users with invite token
+- `src/routes/login/+page.svelte` — removed dead-end block, added email pre-fill on error
+
+### Debug Plan (for next session)
 - `src/lib/server/db.ts` — Added `loadEnv()` for proper .env loading in dev mode
 - `src/routes/register/+page.server.ts` — Fixed createSession call, cookie set, vineyard JOIN, type imports, .js extension
 - `src/routes/register/+page.svelte` — Added `form` export for error display
