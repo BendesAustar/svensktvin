@@ -21,24 +21,28 @@
     </div>
     <a href="/login" style="color:#2d6a2d;font-size:0.9rem">← Tillbaka till inloggning</a>
   {:else if data.hasAccount}
-    <!-- User has existing account -->
-    <h1 style="margin-bottom:1rem">Redan registrerad</h1>
+    <!-- User has existing account — invite link but no account yet -->
+    <h1 style="margin-bottom:0.5rem">Redan registrerad</h1>
     <div
-      style="background:#fff3e0;padding:1rem;border-radius:4px;margin-bottom:1.5rem"
+      style="background:#e3f2fd;padding:1rem;border-radius:4px;margin-bottom:1rem;border-left:4px solid #1976d2"
     >
       <p style="margin:0 0 0.5rem;font-size:0.95rem">
         Det finns redan ett konto för <strong>{data.email}</strong>.
       </p>
+      <p style="margin:0 0 0.5rem;font-size:0.85rem;color:#555">
+        Du har blivit inbjuden att gå med i{' '}
+        <strong>{data.invite?.vineyard.name}</strong> (roll:{' '}
+        {data.invite?.role === 'editor' ? 'Redaktör' : 'Ägare'}).
+      </p>
       <p style="margin:0;font-size:0.85rem;color:#555">
-        Logga in med det kontot för att acceptera inbjudan till{' '}
-        {data.invite?.vineyard.name}.
+        Logga in med det kontot för att acceptera inbjudan.
       </p>
     </div>
     <a
-      href="/login"
-      style="display:block;text-align:center;padding:0.7rem;background:#2d6a2d;color:#fff;border-radius:4px;text-decoration:none"
+      href="/login?invite={data.inviteToken}"
+      style="display:block;text-align:center;padding:0.7rem;background:#2d6a2d;color:#fff;border-radius:4px;text-decoration:none;font-weight:500"
     >
-      Logga in
+      Logga in för att acceptera inbjudan
     </a>
   {:else}
     <!-- New account registration -->

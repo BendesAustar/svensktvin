@@ -1,13 +1,17 @@
 <!-- src/routes/login/+page.svelte -->
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import type { PageData } from './$types';
+
   interface Form {
     error?: string;
     sent?: boolean;
     inviteToken?: string | null;
     email?: string;
   }
+
   export let form: Form;
+  export let data: PageData;
 </script>
 
 <svelte:head><title>Logga in — Svenskt Vin</title></svelte:head>
@@ -20,7 +24,13 @@
       Om ett konto finns för den adressen har du fått en inloggningslänk via e-post.
     </p>
   {:else if form?.error}
-    <p style="color:#c62828;margin-bottom:1rem">{form.error}</p>
+    <p style="color:#c62828;margin-bottom:0.5rem">{form.error}</p>
+    <!-- Show vineyard context if invite token present -->
+    {#if data.vineyard}
+      <div style="background:#fff3e0;padding:0.75rem;border-radius:4px;margin-bottom:1rem;font-size:0.85rem;color:#555">
+        Du har blivit inbjuden till <strong>{data.vineyard.name}</strong>.
+      </div>
+    {/if}
     <form method="POST" use:enhance>
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
       <input
@@ -39,6 +49,13 @@
       </button>
     </form>
   {:else}
+    <!-- Show vineyard invitation context if invite token is present -->
+    {#if data.vineyard}
+      <div style="background:#e3f2fd;padding:1rem;border-radius:4px;margin-bottom:1rem;border-left:4px solid #1976d2">
+        <p style="margin:0 0 0.25rem;font-size:0.85rem;color:#555">Du har blivit inbjuden att gå med i</p>
+        <p style="margin:0;font-size:1.1rem;font-weight:600">{data.vineyard.name}</p>
+      </div>
+    {/if}
     <p style="color:#555;margin-bottom:1.5rem">Ange din e-postadress för att logga in.</p>
     <form method="POST" use:enhance>
       <label for="email-input" style="display:block;margin-bottom:0.25rem;font-size:0.9rem">E-postadress</label>
