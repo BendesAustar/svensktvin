@@ -29,7 +29,7 @@
             Som inloggad som <strong>{{.Email}}</strong>, vill du acceptera inbjudan?
         </p>
 
-        <form method="POST" hx-post="/invite/confirm" hx-swap="outerHTML">
+        <form method="POST" hx-post="/invite/confirm" hx-swap="none">
             <input type="hidden" name="invite_token" value="{{.InviteToken}}" />
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <button type="submit"

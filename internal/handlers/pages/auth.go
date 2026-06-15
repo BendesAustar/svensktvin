@@ -260,8 +260,9 @@ func (h *AuthHandler) HandleLogoutPOST(tmpl *template.Template) http.HandlerFunc
 		// Clear session cookie
 		h.sessionMgr.ClearSessionCookie(w)
 
-		// Redirect to login with flash message
-		http.Redirect(w, r, "/login?logged_out=true", http.StatusSeeOther)
+		// HX-Redirect: HTMX SPA-like navigation to login
+		w.Header().Set("HX-Redirect", "/login?logged_out=true")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -708,12 +709,8 @@ func (h *AuthHandler) HandleInviteConfirmPOST(tmpl *template.Template) http.Hand
 		// Mark invite as used
 		_ = h.store.UpdatePendingInviteUsed(r.Context(), invite.ID)
 
-		// Redirect to vineyard
-		vineyardName, _ := h.store.GetVineyardName(r.Context(), invite.VineyardID)
-		data := map[string]any{
-			"VineyardName": vineyardName,
-			"VineyardID":   invite.VineyardID,
-		}
-		renderTemplate(w, tmpl, "invite/success.html", data)
+		// HX-Redirect: HTMX SPA-like navigation to vineyard
+		w.Header().Set("HX-Redirect", fmt.Sprintf("/vineyard/%d", invite.VineyardID))
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
