@@ -207,31 +207,6 @@ func (s *Store) GetBlock(ctx context.Context, blockID, vineyardID int64) (*struc
 	return &result, nil
 }
 
-// CreateHarvest creates a new harvest record.
-func (s *Store) CreateHarvest(ctx context.Context, blockID int64,
-	harvestYear int, harvestDate *string, yieldKG float64,
-	brix, acidGL *float64, vineHealthRating *int, notes *string,
-	stillWineL, sparklingL, juiceL, soldKG, discardedKG *float64) (int64, error) {
-
-	var harvestID int64
-	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO harvest_records (
-			block_id, harvest_year, harvest_date, yield_kg,
-			brix, acid_g_l, vine_health_rating, notes,
-			still_wine_l, sparkling_l, juice_l,
-			sold_kg, discarded_kg
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		RETURNING id
-	`, blockID, harvestYear, harvestDate, yieldKG,
-		brix, acidGL, vineHealthRating, notes,
-		stillWineL, sparklingL, juiceL,
-		soldKG, discardedKG).Scan(&harvestID)
-	if err != nil {
-		return 0, fmt.Errorf("create harvest: %w", err)
-	}
-	return harvestID, nil
-}
-
 // ListVarieties retrieves all approved varieties.
 func (s *Store) ListVarieties(ctx context.Context) ([]Variety, error) {
 	rows, err := s.Pool.Query(ctx, `
@@ -735,4 +710,313 @@ func (s *Store) CreateOrLookupVariety(ctx context.Context, name string, vineyard
 	}
 
 	return varietyID, nil
+}
+
+// CreateHarvest creates a new harvest record.
+func (s *Store) CreateHarvest(ctx context.Context, input *HarvestCreateInput) (int64, error) {
+	var harvestID int64
+	err := s.Pool.QueryRow(ctx, `
+		INSERT INTO harvest_records (
+			block_id, harvest_year, harvest_date, yield_kg,
+			brix, acid_g_l, vine_health_rating, notes,
+			still_wine_l, sparkling_l, juice_l,
+			sold_kg, discarded_kg
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING id
+	`, input.BlockID, input.HarvestYear, input.HarvestDate, input.YieldKG,
+		input.Brix, input.AcidgL, input.VineHealthRating, input.Notes,
+		input.StillWineL, input.SparklingL, input.JuiceL,
+		input.SoldKG, input.DiscardedKG).Scan(&harvestID)
+	if err != nil {
+		return 0, fmt.Errorf("create harvest: %w", err)
+	}
+	return harvestID, nil
+}
+
+// GetHarvest retrieves a harvest record by ID, verifying it belongs to the vineyard.
+func (s *Store) GetHarvest(ctx context.Context, harvestID, vineyardID int64) (*Harvest, error) {
+	var h Harvest
+	err := s.Pool.QueryRow(ctx, `
+		SELECT hr.id, hr.block_id, hr.harvest_year, hr.harvest_date,
+		       hr.yield_kg, hr.brix, hr.acid_g_l, hr.vine_health_rating,
+		       hr.notes, hr.still_wine_l, hr.sparkling_l, hr.juice_l,
+		       hr.sold_kg, hr.discarded_kg
+		FROM harvest_records hr
+		JOIN blocks b ON hr.block_id = b.id
+		WHERE hr.id = $1 AND b.vineyard_id = $2 AND hr.deleted_at IS NULL
+	`, harvestID, vineyardID).Scan(
+		&h.ID, &h.BlockID, &h.HarvestYear, &h.HarvestDate,
+		&h.YieldKG, &h.Brix, &h.AcidgL, &h.VineHealthRating,
+		&h.Notes, &h.StillWineL, &h.SparklingL, &h.JuiceL,
+		&h.SoldKG, &h.DiscardedKG,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get harvest: %w", err)
+	}
+	return &h, nil
+}
+
+// UpdateHarvest updates an existing harvest record.
+func (s *Store) UpdateHarvest(ctx context.Context, harvestID, vineyardID int64, input *HarvestUpdateInput) error {
+	query := `UPDATE harvest_records SET updated_at = now()`
+	args := []any{}
+	argIndex := 1
+
+	if input.HarvestDate != nil {
+		query += fmt.Sprintf(", harvest_date = $%d", argIndex)
+		args = append(args, *input.HarvestDate)
+		argIndex++
+	}
+	if input.HarvestYear != nil {
+		query += fmt.Sprintf(", harvest_year = $%d", argIndex)
+		args = append(args, *input.HarvestYear)
+		argIndex++
+	}
+	if input.YieldKG != nil {
+		query += fmt.Sprintf(", yield_kg = $%d", argIndex)
+		args = append(args, *input.YieldKG)
+		argIndex++
+	}
+	if input.Brix != nil {
+		query += fmt.Sprintf(", brix = $%d", argIndex)
+		args = append(args, *input.Brix)
+		argIndex++
+	}
+	if input.AcidgL != nil {
+		query += fmt.Sprintf(", acid_g_l = $%d", argIndex)
+		args = append(args, *input.AcidgL)
+		argIndex++
+	}
+	if input.VineHealthRating != nil {
+		query += fmt.Sprintf(", vine_health_rating = $%d", argIndex)
+		args = append(args, *input.VineHealthRating)
+		argIndex++
+	}
+	if input.Notes != nil {
+		query += fmt.Sprintf(", notes = $%d", argIndex)
+		args = append(args, *input.Notes)
+		argIndex++
+	}
+	if input.StillWineL != nil {
+		query += fmt.Sprintf(", still_wine_l = $%d", argIndex)
+		args = append(args, *input.StillWineL)
+		argIndex++
+	}
+	if input.SparklingL != nil {
+		query += fmt.Sprintf(", sparkling_l = $%d", argIndex)
+		args = append(args, *input.SparklingL)
+		argIndex++
+	}
+	if input.JuiceL != nil {
+		query += fmt.Sprintf(", juice_l = $%d", argIndex)
+		args = append(args, *input.JuiceL)
+		argIndex++
+	}
+	if input.SoldKG != nil {
+		query += fmt.Sprintf(", sold_kg = $%d", argIndex)
+		args = append(args, *input.SoldKG)
+		argIndex++
+	}
+	if input.DiscardedKG != nil {
+		query += fmt.Sprintf(", discarded_kg = $%d", argIndex)
+		args = append(args, *input.DiscardedKG)
+		argIndex++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d AND block_id IN (SELECT id FROM blocks WHERE vineyard_id = $%d) AND deleted_at IS NULL",
+		argIndex, argIndex+1)
+	args = append(args, harvestID, vineyardID)
+
+	_, err := s.Pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("update harvest: %w", err)
+	}
+	return nil
+}
+
+// GetHarvestsByBlock retrieves all harvest records for a block.
+func (s *Store) GetHarvestsByBlock(ctx context.Context, blockID int64) ([]Harvest, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT id, block_id, harvest_year, harvest_date, yield_kg,
+		       brix, acid_g_l, vine_health_rating, notes,
+		       still_wine_l, sparkling_l, juice_l,
+		       sold_kg, discarded_kg
+		FROM harvest_records
+		WHERE block_id = $1 AND deleted_at IS NULL
+		ORDER BY harvest_year DESC
+	`, blockID)
+	if err != nil {
+		return nil, fmt.Errorf("get harvests by block: %w", err)
+	}
+	defer rows.Close()
+
+	var harvests []Harvest
+	for rows.Next() {
+		var h Harvest
+		if err := rows.Scan(
+			&h.ID, &h.BlockID, &h.HarvestYear, &h.HarvestDate,
+			&h.YieldKG, &h.Brix, &h.AcidgL, &h.VineHealthRating,
+			&h.Notes, &h.StillWineL, &h.SparklingL, &h.JuiceL,
+			&h.SoldKG, &h.DiscardedKG,
+		); err != nil {
+			continue
+		}
+		harvests = append(harvests, h)
+	}
+	return harvests, nil
+}
+
+// CreateBlockLock creates a block lock record.
+func (s *Store) CreateBlockLock(ctx context.Context, input *BlockLockInput, ttlMinutes int) error {
+	_, err := s.Pool.Exec(ctx, `
+		INSERT INTO block_locks (block_id, user_id, created_at, expires_at)
+		VALUES ($1, $2, now(), now() + $3 * interval '1 minute')
+	`, input.BlockID, input.UserID, ttlMinutes)
+	if err != nil {
+		return fmt.Errorf("create block lock: %w", err)
+	}
+	return nil
+}
+
+// GetBlockLock retrieves an active block lock if it exists and is not expired.
+func (s *Store) GetBlockLock(ctx context.Context, blockID int64) (*BlockLock, error) {
+	var bl BlockLock
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, block_id, user_id, created_at, expires_at
+		FROM block_locks
+		WHERE block_id = $1 AND expires_at > now()
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, blockID).Scan(
+		&bl.ID, &bl.BlockID, &bl.UserID,
+		&bl.CreatedAt, &bl.ExpiresAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get block lock: %w", err)
+	}
+	return &bl, nil
+}
+
+// DeleteBlockLock deletes a block lock record.
+func (s *Store) DeleteBlockLock(ctx context.Context, blockID int64) error {
+	_, err := s.Pool.Exec(ctx, `
+		DELETE FROM block_locks WHERE block_id = $1
+	`, blockID)
+	if err != nil {
+		return fmt.Errorf("delete block lock: %w", err)
+	}
+	return nil
+}
+
+// ExtendBlockLock extends a block lock's expiry by the given TTL.
+func (s *Store) ExtendBlockLock(ctx context.Context, blockID int64, ttlMinutes int) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE block_locks
+		SET expires_at = now() + $2 * interval '1 minute'
+		WHERE block_id = $1 AND expires_at > now()
+	`, blockID, ttlMinutes)
+	if err != nil {
+		return fmt.Errorf("extend block lock: %w", err)
+	}
+	return nil
+}
+
+// GetUserWithDetails retrieves user data with vineyard membership, blocks, and harvests.
+func (s *Store) GetUserWithDetails(ctx context.Context, userID int64) (map[string]any, error) {
+	result := make(map[string]any)
+
+	// Get user
+	var u User
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, email, name, is_admin, active, last_login
+		FROM users WHERE id = $1
+	`, userID).Scan(&u.ID, &u.Email, &u.Name, &u.IsAdmin, &u.Active, &u.LastLogin)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+	result["user"] = u
+
+	// Get vineyard memberships
+	rows, err := s.Pool.Query(ctx, `
+		SELECT vm.vineyard_id, vm.role, v.name, v.county
+		FROM vineyard_members vm
+		JOIN vineyards v ON vm.vineyard_id = v.id
+		WHERE vm.user_id = $1 AND v.deleted_at IS NULL
+		ORDER BY v.name
+	`, userID)
+	if err == nil {
+		defer rows.Close()
+		var memberships []map[string]any
+		for rows.Next() {
+			var membership map[string]any
+			var vineyardID *int64
+			var role string
+			var name, county *string
+			if err := rows.Scan(&vineyardID, &role, &name, &county); err != nil {
+				continue
+			}
+			membership = map[string]any{
+				"vineyard_id": *vineyardID,
+				"role":        role,
+				"name":        name,
+				"county":      county,
+			}
+			memberships = append(memberships, membership)
+		}
+		result["vineyard_memberships"] = memberships
+	}
+
+	return result, nil
+}
+
+// SoftDeleteUser soft-deletes a user's vineyards and removes memberships.
+func (s *Store) SoftDeleteUser(ctx context.Context, userID int64) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("soft delete begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Soft-delete vineyards
+	_, err = tx.Exec(ctx, `
+		UPDATE vineyards SET deleted_at = now()
+		WHERE id IN (SELECT vineyard_id FROM vineyard_members WHERE user_id = $1)
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("soft delete vineyards: %w", err)
+	}
+
+	// Remove memberships
+	_, err = tx.Exec(ctx, `
+		DELETE FROM vineyard_members WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("remove memberships: %w", err)
+	}
+
+	// Invalidate sessions
+	_, err = tx.Exec(ctx, `
+		DELETE FROM sessions WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("invalidate sessions: %w", err)
+	}
+
+	// Clear password hash (make account passwordless)
+	_, err = tx.Exec(ctx, `
+		UPDATE users SET password_hash = NULL WHERE id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("clear password: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+// InvalidateSessionsByUser invalidates all sessions for a user (alias for DeleteSessionsByUser).
+func (s *Store) InvalidateSessionsByUser(ctx context.Context, userID int64) error {
+	return s.DeleteSessionsByUser(ctx, userID)
 }

@@ -1,0 +1,216 @@
+{{template "base.html" .}}
+
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<main class="max-w-2xl mx-auto mt-12 px-4">
+    <!-- Back link -->
+    <div class="mb-4">
+        <a href="/vineyard/{{.Vineyard.ID}}" class="text-gray-500 text-sm no-underline hover:text-[#2d6a2d]">
+            ← Tillbaka till {{.Vineyard.Name}}
+        </a>
+    </div>
+
+    <!-- Page title -->
+    <h1 class="text-2xl mb-6">Redigera skörd</h1>
+
+    {{if .Error}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="m-0">{{.Error}}</p>
+    </div>
+    {{end}}
+
+    {{if .FieldErrors}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="m-0 pl-4">
+            {{range .FieldErrors}}
+            <li>{{.Field}}: {{.Issue}}</li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    <!-- Harvest edit form -->
+    <form id="harvest-form"
+          hx-post="/vineyard/{{.Vineyard.ID}}/harvest/{{.Harvest.ID}}/edit"
+          hx-swap="none"
+          hx-indicator="#harvest-form .submit-btn"
+          class="space-y-6">
+
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+        <!-- Block selector -->
+        <div>
+            <label for="block_id" class="block mb-1 text-sm font-semibold text-gray-700">
+                Block <span class="text-red-600">*</span>
+            </label>
+            <select id="block_id" name="block_id" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded text-base">
+                <option value="">Välj block</option>
+                {{range .Blocks}}
+                <option value="{{.ID}}" {{if eq .ID .Harvest.BlockID}}selected{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <!-- Harvest details fieldset -->
+        <fieldset class="border border-gray-300 rounded p-4">
+            <legend class="font-semibold px-2 text-gray-700">Skördinformation</legend>
+
+            <!-- Harvest date -->
+            <div class="mt-4">
+                <label for="harvest_date" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördedatum <span class="text-red-600">*</span>
+                </label>
+                <input id="harvest_date" type="date" name="harvest_date" required
+                       value="{{if .Harvest.HarvestDate}}{{.Harvest.HarvestDate.Format "2006-01-02"}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Harvest year -->
+            <div class="mt-4">
+                <label for="harvest_year" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördeår <span class="text-red-600">*</span>
+                </label>
+                <input id="harvest_year" type="number" name="harvest_year" min="2000" max="2099" required
+                       value="{{if .Harvest.HarvestYear}}{{.Harvest.HarvestYear}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Yield (kg) -->
+            <div class="mt-4">
+                <label for="yield_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördeavkastning (kg) <span class="text-red-600">*</span>
+                </label>
+                <input id="yield_kg" type="number" name="yield_kg" step="0.1" min="0.1" required
+                       value="{{if .Harvest.YieldKG}}{{.Harvest.YieldKG}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Analysis parameters fieldset -->
+            <fieldset class="border border-gray-300 rounded p-4 mt-4">
+                <legend class="font-semibold px-2 text-gray-700">Analysparametrar</legend>
+
+                <!-- Brix -->
+                <div class="mt-4">
+                    <label for="brix" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Brix
+                    </label>
+                    <input id="brix" type="number" name="brix" step="0.1" min="0" max="100"
+                           value="{{if .Harvest.Brix}}{{.Harvest.Brix}}{{end}}"
+                           placeholder="T.ex. 18.5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Acid (g/l) -->
+                <div class="mt-4">
+                    <label for="acid_g_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Syra (g/l)
+                    </label>
+                    <input id="acid_g_l" type="number" name="acid_g_l" step="0.01" min="0" max="50"
+                           value="{{if .Harvest.AcidgL}}{{.Harvest.AcidgL}}{{end}}"
+                           placeholder="T.ex. 7.5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Vine health rating -->
+                <div class="mt-4">
+                    <label for="vine_health_rating" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Vinstockshälsa (1-5)
+                    </label>
+                    <select id="vine_health_rating" name="vine_health_rating"
+                            class="w-full px-3 py-2 border border-gray-300 rounded text-base">
+                        <option value="">Välj hälsoregistrering</option>
+                        <option value="1" {{if eq .Harvest.VineHealthRating 1}}selected{{end}}>1 - Mycket dålig</option>
+                        <option value="2" {{if eq .Harvest.VineHealthRating 2}}selected{{end}}>2 - Dålig</option>
+                        <option value="3" {{if eq .Harvest.VineHealthRating 3}}selected{{end}}>3 - Normal</option>
+                        <option value="4" {{if eq .Harvest.VineHealthRating 4}}selected{{end}}>4 - God</option>
+                        <option value="5" {{if eq .Harvest.VineHealthRating 5}}selected{{end}}>5 - Utmärkt</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <!-- Notes -->
+            <div class="mt-4">
+                <label for="notes" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Noteringar
+                </label>
+                <textarea id="notes" name="notes" rows="3"
+                          placeholder="Observera väder, sjukdomar, skördemetod..."
+                          class="w-full px-3 py-2 border border-gray-300 rounded text-base">{{if .Harvest.Notes}}{{.Harvest.Notes}}{{end}}</textarea>
+            </div>
+        </fieldset>
+
+        <!-- Product allocation fieldset -->
+        <fieldset class="border border-gray-300 rounded p-4">
+            <legend class="font-semibold px-2 text-gray-700">Produktallokering</legend>
+
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <!-- Still wine (liters) -->
+                <div>
+                    <label for="still_wine_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Vin (liter)
+                    </label>
+                    <input id="still_wine_l" type="number" name="still_wine_l" step="0.1" min="0"
+                           value="{{if .Harvest.StillWineL}}{{.Harvest.StillWineL}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Sparkling wine (liters) -->
+                <div>
+                    <label for="sparkling_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Mousserande (liter)
+                    </label>
+                    <input id="sparkling_l" type="number" name="sparkling_l" step="0.1" min="0"
+                           value="{{if .Harvest.SparklingL}}{{.Harvest.SparklingL}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Juice (liters) -->
+                <div>
+                    <label for="juice_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Juice (liter)
+                    </label>
+                    <input id="juice_l" type="number" name="juice_l" step="0.1" min="0"
+                           value="{{if .Harvest.JuiceL}}{{.Harvest.JuiceL}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Sold (kg) -->
+                <div>
+                    <label for="sold_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Sålde (kg)
+                    </label>
+                    <input id="sold_kg" type="number" name="sold_kg" step="0.1" min="0"
+                           value="{{if .Harvest.SoldKG}}{{.Harvest.SoldKG}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Discarded (kg) -->
+                <div>
+                    <label for="discarded_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Slängde (kg)
+                    </label>
+                    <input id="discarded_kg" type="number" name="discarded_kg" step="0.1" min="0"
+                           value="{{if .Harvest.DiscardedKG}}{{.Harvest.DiscardedKG}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Submit button -->
+        <div class="pt-4">
+            <button type="submit"
+                    class="submit-btn w-full px-4 py-3 bg-[#2d6a2d] text-white rounded text-base font-semibold hover:bg-green-800 no-underline cursor-pointer">
+                <span class="hx-loading-hidden">Uppdatera skörd</span>
+                <span class="hx-loading">Uppdaterar...</span>
+            </button>
+        </div>
+    </form>
+</main>
+{{end}}

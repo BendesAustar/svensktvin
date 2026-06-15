@@ -1,0 +1,282 @@
+{{template "base.html" .}}
+
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<main class="max-w-2xl mx-auto mt-12 px-4">
+    <!-- Back link -->
+    <div class="mb-4">
+        <a href="/vineyard/{{.Vineyard.ID}}" class="text-gray-500 text-sm no-underline hover:text-[#2d6a2d]">
+            ← Tillbaka till {{.Vineyard.Name}}
+        </a>
+    </div>
+
+    <!-- Page title -->
+    <h1 class="text-2xl mb-6">Ny skörd</h1>
+
+    {{if .Lock}}
+    <!-- Lock indicator -->
+    <div class="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded mb-4">
+        <p class="m-0 text-sm">
+            🔒 Blocket är låst av dig. Låset förfaller om
+            <span id="countdown" class="font-mono font-bold">30:00</span>.
+            <form hx-post="/vineyard/{{.Vineyard.ID}}/blocks/{{.Lock.BlockID}}/harvest/lock/extend"
+                  hx-swap="none"
+                  hx-trigger="lock-extended"
+                  class="inline">
+                <button type="submit" class="underline cursor-pointer text-amber-800 hover:text-amber-600">
+                    Förläng lås (30 min)
+                </button>
+            </form>
+        </p>
+    </div>
+    <!-- Hidden lock data for Alpine.js countdown -->
+    <div id="lock-data" x-data style="display:none" hidden>{{.LockJSON}}</div>
+    {{end}}
+
+    {{if .Error}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="m-0">{{.Error}}</p>
+    </div>
+    {{end}}
+
+    {{if .FieldErrors}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="m-0 pl-4">
+            {{range .FieldErrors}}
+            <li>{{.Field}}: {{.Issue}}</li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    <!-- Harvest creation form -->
+    <form id="harvest-form"
+          hx-post="/vineyard/{{.Vineyard.ID}}/harvest/new"
+          hx-swap="none"
+          hx-indicator="#harvest-form .submit-btn"
+          class="space-y-6">
+
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+        <!-- Block selector -->
+        <div>
+            <label for="block_id" class="block mb-1 text-sm font-semibold text-gray-700">
+                Block <span class="text-red-600">*</span>
+            </label>
+            <select id="block_id" name="block_id" required
+                    {{if .BlockID}}value="{{.BlockID}}"{{end}}
+                    class="w-full px-3 py-2 border border-gray-300 rounded text-base">
+                <option value="">Välj block</option>
+                {{range .Blocks}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{end}}
+            </select>
+            {{if .Lock}}
+            <input type="hidden" name="block_id" value="{{.BlockID}}" />
+            {{end}}
+        </div>
+
+        <!-- Harvest details fieldset -->
+        <fieldset class="border border-gray-300 rounded p-4">
+            <legend class="font-semibold px-2 text-gray-700">Skördinformation</legend>
+
+            <!-- Harvest date -->
+            <div class="mt-4">
+                <label for="harvest_date" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördedatum <span class="text-red-600">*</span>
+                </label>
+                <input id="harvest_date" type="date" name="harvest_date" required
+                       value="{{if .HarvestDate}}{{.HarvestDate}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Harvest year -->
+            <div class="mt-4">
+                <label for="harvest_year" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördeår <span class="text-red-600">*</span>
+                </label>
+                <input id="harvest_year" type="number" name="harvest_year" min="2000" max="2099" required
+                       value="{{if .HarvestYear}}{{.HarvestYear}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Yield (kg) -->
+            <div class="mt-4">
+                <label for="yield_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Skördeavkastning (kg) <span class="text-red-600">*</span>
+                </label>
+                <input id="yield_kg" type="number" name="yield_kg" step="0.1" min="0.1" required
+                       value="{{if .YieldKg}}{{.YieldKg}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Analysis parameters fieldset -->
+            <fieldset class="border border-gray-300 rounded p-4 mt-4">
+                <legend class="font-semibold px-2 text-gray-700">Analysparametrar</legend>
+
+                <!-- Brix -->
+                <div class="mt-4">
+                    <label for="brix" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Brix
+                    </label>
+                    <input id="brix" type="number" name="brix" step="0.1" min="0" max="100"
+                           value="{{if .Brix}}{{.Brix}}{{end}}"
+                           placeholder="T.ex. 18.5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Acid (g/l) -->
+                <div class="mt-4">
+                    <label for="acid_g_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Syra (g/l)
+                    </label>
+                    <input id="acid_g_l" type="number" name="acid_g_l" step="0.01" min="0" max="50"
+                           value="{{if .AcidGL}}{{.AcidGL}}{{end}}"
+                           placeholder="T.ex. 7.5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Vine health rating -->
+                <div class="mt-4">
+                    <label for="vine_health_rating" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Vinstockshälsa (1-5)
+                    </label>
+                    <select id="vine_health_rating" name="vine_health_rating"
+                            class="w-full px-3 py-2 border border-gray-300 rounded text-base">
+                        <option value="">Välj hälsoregistrering</option>
+                        <option value="1" {{if eq .VineHealth "1"}}selected{{end}}>1 - Mycket dålig</option>
+                        <option value="2" {{if eq .VineHealth "2"}}selected{{end}}>2 - Dålig</option>
+                        <option value="3" {{if eq .VineHealth "3"}}selected{{end}}>3 - Normal</option>
+                        <option value="4" {{if eq .VineHealth "4"}}selected{{end}}>4 - God</option>
+                        <option value="5" {{if eq .VineHealth "5"}}selected{{end}}>5 - Utmärkt</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <!-- Notes -->
+            <div class="mt-4">
+                <label for="notes" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Noteringar
+                </label>
+                <textarea id="notes" name="notes" rows="3"
+                          placeholder="Observera väder, sjukdomar, skördemetod..."
+                          class="w-full px-3 py-2 border border-gray-300 rounded text-base">{{if .Notes}}{{.Notes}}{{end}}</textarea>
+            </div>
+        </fieldset>
+
+        <!-- Product allocation fieldset -->
+        <fieldset class="border border-gray-300 rounded p-4">
+            <legend class="font-semibold px-2 text-gray-700">Produktallokering</legend>
+
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <!-- Still wine (liters) -->
+                <div>
+                    <label for="still_wine_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Vin (liter)
+                    </label>
+                    <input id="still_wine_l" type="number" name="still_wine_l" step="0.1" min="0"
+                           value="{{if .StillWine}}{{.StillWine}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Sparkling wine (liters) -->
+                <div>
+                    <label for="sparkling_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Mousserande (liter)
+                    </label>
+                    <input id="sparkling_l" type="number" name="sparkling_l" step="0.1" min="0"
+                           value="{{if .Sparkling}}{{.Sparkling}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Juice (liters) -->
+                <div>
+                    <label for="juice_l" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Juice (liter)
+                    </label>
+                    <input id="juice_l" type="number" name="juice_l" step="0.1" min="0"
+                           value="{{if .Juice}}{{.Juice}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Sold (kg) -->
+                <div>
+                    <label for="sold_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Sålde (kg)
+                    </label>
+                    <input id="sold_kg" type="number" name="sold_kg" step="0.1" min="0"
+                           value="{{if .Sold}}{{.Sold}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+
+                <!-- Discarded (kg) -->
+                <div>
+                    <label for="discarded_kg" class="block mb-1 text-sm font-semibold text-gray-700">
+                        Slängde (kg)
+                    </label>
+                    <input id="discarded_kg" type="number" name="discarded_kg" step="0.1" min="0"
+                           value="{{if .Discarded}}{{.Discarded}}{{end}}"
+                           placeholder="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Submit button -->
+        <div class="pt-4">
+            <button type="submit"
+                    class="submit-btn w-full px-4 py-3 bg-[#2d6a2d] text-white rounded text-base font-semibold hover:bg-green-800 no-underline cursor-pointer">
+                <span class="hx-loading-hidden">Skapa skörd</span>
+                <span class="hx-loading">Skapar...</span>
+            </button>
+        </div>
+    </form>
+</main>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Countdown timer for block lock
+(function() {
+    const lockEl = document.getElementById('lock-data');
+    if (!lockEl) return;
+
+    const lockData = JSON.parse(lockEl.textContent);
+    const expiresAt = new Date(lockData.expires_at);
+
+    function updateCountdown() {
+        const now = new Date();
+        const diff = expiresAt - now;
+
+        if (diff <= 0) {
+            document.getElementById('countdown').textContent = '00:00';
+            setTimeout(() => location.reload(), 1000);
+            return;
+        }
+
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        document.getElementById('countdown').textContent =
+            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+
+        if (diff < 60000) {
+            document.getElementById('countdown').classList.add('text-red-600');
+        }
+    }
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    // Listen for lock-extended HTMX trigger to reset timer
+    document.addEventListener('lock-extended', () => {
+        clearInterval(timer);
+        location.reload();
+    });
+})();
+</script>
+{{end}}

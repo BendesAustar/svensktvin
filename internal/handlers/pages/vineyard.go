@@ -216,3 +216,25 @@ func ParseInt64(s string) (int64, bool) {
 	}
 	return n, n > 0
 }
+
+// HandleVineyardPOST routes POST requests to appropriate handlers.
+func (h *VineyardHandler) HandleVineyardPOST(tmpl *template.Template, harvestHandler *HarvestHandler, harvestLockHandler *HarvestLockHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Check if this is a block lock harvest route — delegate to HarvestLockHandler
+		if strings.HasPrefix(path, "/vineyard/") && strings.Contains(path, "/harvest/lock") {
+			harvestLockHandler.routeHarvestLockRequest(tmpl).ServeHTTP(w, r)
+			return
+		}
+
+		// Check if this is a harvest route — delegate to HarvestHandler
+		if strings.HasPrefix(path, "/vineyard/") && strings.Contains(path, "/harvest/") {
+			harvestHandler.routeHarvestRequest(tmpl).ServeHTTP(w, r)
+			return
+		}
+
+		// Not a harvest route — fall through (will return 404)
+		http.NotFound(w, r)
+	}
+}

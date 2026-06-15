@@ -61,6 +61,13 @@ func main() {
 	// Initialize vineyard handlers
 	vineyardHandler := pages.NewVineyardHandler(store, sessionMgr)
 
+	// Initialize harvest handlers
+	harvestHandler := pages.NewHarvestHandler(store, sessionMgr)
+	harvestLockHandler := pages.NewHarvestLockHandler(store, sessionMgr)
+
+	// Initialize account API handlers
+	accountHandler := api.NewAccountHandler(store, sessionMgr)
+
 	// Initialize API handlers
 	varietySearchHandler := api.NewVarietySearchHandler(store)
 	geoReverseHandler := api.NewGeoReverseHandler()
@@ -104,6 +111,13 @@ func main() {
 	mux.HandleFunc("GET /vineyard", vineyardHandler.HandleLandingGET(templates))
 	mux.HandleFunc("GET /vineyard/", vineyardHandler.HandleVineyardGET(templates))
 	mux.HandleFunc("GET /vineyard/benchmark", vineyardHandler.HandleBenchmarkGET(templates))
+
+	// Harvest POST routes (require auth) — locked by method+path
+	mux.HandleFunc("POST /vineyard/", vineyardHandler.HandleVineyardPOST(templates, harvestHandler, harvestLockHandler))
+
+	// Account API routes (require auth)
+	mux.HandleFunc("GET /account/export", accountHandler.HandleAccountExportGET)
+	mux.HandleFunc("POST /account/delete", accountHandler.HandleAccountDeletePOST)
 
 	// Static files
 	staticDir := "static"

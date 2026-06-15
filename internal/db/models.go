@@ -111,3 +111,71 @@ type PendingInvite struct {
 	Role        string    `json:"role"`
 	ExpiresAt   time.Time `json:"expires_at"`
 }
+
+// BlockLock represents an active block lock for harvest creation.
+type BlockLock struct {
+	ID        int64     `json:"id"`
+	BlockID   int64     `json:"block_id"`
+	UserID    int64     `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// Harvest represents a harvest record (alias for HarvestRecord for handler use).
+type Harvest struct {
+	ID               int64      `json:"id"`
+	BlockID          int64      `json:"block_id"`
+	HarvestYear      *int       `json:"harvest_year"`
+	HarvestDate      *time.Time `json:"harvest_date"`
+	YieldKG          float64    `json:"yield_kg"`
+	Brix             *float64   `json:"brix"`
+	AcidgL           *float64   `json:"acid_g_l"`
+	VineHealthRating *int       `json:"vine_health_rating"`
+	Notes            *string    `json:"notes"`
+	StillWineL       *float64   `json:"still_wine_l"`
+	SparklingL       *float64   `json:"sparkling_l"`
+	JuiceL           *float64   `json:"juice_l"`
+	SoldKG           *float64   `json:"sold_kg"`
+	DiscardedKG      *float64   `json:"discarded_kg"`
+}
+
+// HarvestCreateInput holds input data for creating a harvest record.
+type HarvestCreateInput struct {
+	BlockID          int64      `json:"block_id"`
+	VineyardID       int64      `json:"vineyard_id"`
+	UserID           int64      `json:"user_id"`
+	HarvestDate      *time.Time `json:"harvest_date"`
+	HarvestYear      int        `json:"harvest_year"`
+	YieldKG          float64    `json:"yield_kg"`
+	Brix             *float64   `json:"brix"`
+	AcidgL           *float64   `json:"acid_g_l"`
+	VineHealthRating *int       `json:"vine_health_rating"`
+	Notes            *string    `json:"notes"`
+	StillWineL       *float64   `json:"still_wine_l"`
+	SparklingL       *float64   `json:"sparkling_l"`
+	JuiceL           *float64   `json:"juice_l"`
+	SoldKG           *float64   `json:"sold_kg"`
+	DiscardedKG      *float64   `json:"discarded_kg"`
+}
+
+// HarvestUpdateInput holds optional fields for updating a harvest record.
+type HarvestUpdateInput struct {
+	HarvestDate      *time.Time `json:"harvest_date"`
+	HarvestYear      *int       `json:"harvest_year"`
+	YieldKG          *float64   `json:"yield_kg"`
+	Brix             *float64   `json:"brix"`
+	AcidgL           *float64   `json:"acid_g_l"`
+	VineHealthRating *int       `json:"vine_health_rating"`
+	Notes            *string    `json:"notes"`
+	StillWineL       *float64   `json:"still_wine_l"`
+	SparklingL       *float64   `json:"sparkling_l"`
+	JuiceL           *float64   `json:"juice_l"`
+	SoldKG           *float64   `json:"sold_kg"`
+	DiscardedKG      *float64   `json:"discarded_kg"`
+}
+
+// BlockLockInput holds input data for creating a block lock.
+type BlockLockInput struct {
+	BlockID int64 `json:"block_id"`
+	UserID  int64 `json:"user_id"`
+}
