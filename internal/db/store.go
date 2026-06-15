@@ -437,3 +437,232 @@ func (s *Store) UpsertUser(ctx context.Context, email string) (int64, error) {
 	}
 	return userID, nil
 }
+
+// HarvestSummary represents a block's latest harvest record.
+type HarvestSummary struct {
+	HarvestYear int
+	YieldKg     float64
+}
+
+// BlockWithHarvest represents a block with its latest harvest and variety info.
+type BlockWithHarvest struct {
+	Block           Block
+	VarietyName     string
+	VarietyColor    string
+	VarietyStatus   string
+	LatestHarvest   *HarvestSummary
+	IsActive        bool
+}
+
+// ListBlocksWithHarvest retrieves all blocks for a vineyard with latest harvest info.
+func (s *Store) ListBlocksWithHarvest(ctx context.Context, vineyardID int64) ([]BlockWithHarvest, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT b.id, b.block_name, b.area_ha, b.vine_count, b.planting_year,
+		       b.training_system, b.aspect, b.slope_degrees, b.elevation_m,
+		       b.is_active,
+		       v.name AS variety_name, v.color, v.status,
+		       hr.harvest_year, hr.yield_kg
+		FROM blocks b
+		JOIN varieties v ON v.id = b.variety_id
+		LEFT JOIN LATERAL (
+			SELECT harvest_year, yield_kg
+			FROM harvest_records
+			WHERE block_id = b.id AND deleted_at IS NULL
+			ORDER BY harvest_year DESC
+			LIMIT 1
+		) hr ON true
+		WHERE b.vineyard_id = $1 AND b.deleted_at IS NULL
+		ORDER BY b.block_name
+	`, vineyardID)
+	if err != nil {
+		return nil, fmt.Errorf("list blocks with harvest: %w", err)
+	}
+	defer rows.Close()
+
+	var blocks []BlockWithHarvest
+	for rows.Next() {
+		var b BlockWithHarvest
+		var harvestYear *int
+		var yieldKg *float64
+		if err := rows.Scan(
+			&b.Block.ID, &b.Block.BlockName, &b.Block.AreaHA,
+			&b.Block.VineCount, &b.Block.PlantingYear,
+			&b.Block.TrainingSystem, &b.Block.Aspect,
+			&b.Block.SlopeDegrees, &b.Block.ElevationM,
+			&b.IsActive,
+			&b.VarietyName, &b.VarietyColor, &b.VarietyStatus,
+			&harvestYear, &yieldKg,
+		); err != nil {
+			continue
+		}
+		b.Block.IsActive = b.IsActive
+		if harvestYear != nil && yieldKg != nil {
+			b.LatestHarvest = &HarvestSummary{
+				HarvestYear: *harvestYear,
+				YieldKg:     *yieldKg,
+			}
+		}
+		blocks = append(blocks, b)
+	}
+	return blocks, nil
+}
+
+// BenchmarkTeaser represents a benchmark teaser on the vineyard dashboard.
+type BenchmarkTeaser struct {
+	VarietyName   string
+	UserYieldKgHa float64
+	VineyardCount int
+}
+
+// GetBenchmarkTeaser retrieves benchmark data for user's most recent harvest in this county.
+func (s *Store) GetBenchmarkTeaser(ctx context.Context, vineyardID, userID int64) (*BenchmarkTeaser, error) {
+	var county string
+	err := s.Pool.QueryRow(ctx, `SELECT county FROM vineyards WHERE id = $1`, vineyardID).Scan(&county)
+	if err != nil {
+		return nil, fmt.Errorf("get benchmark teaser county: %w", err)
+	}
+
+	var varietyName string
+	var userYieldKgHa float64
+	err = s.Pool.QueryRow(ctx, `
+		SELECT v.name, ROUND(hr.yield_kg / b.area_ha, 2)
+		FROM harvest_records hr
+		JOIN blocks b ON hr.block_id = b.id
+		JOIN varieties v ON b.variety_id = v.id
+		WHERE b.vineyard_id = $1 AND hr.deleted_at IS NULL
+		ORDER BY hr.harvest_year DESC
+		LIMIT 1
+	`, vineyardID).Scan(&varietyName, &userYieldKgHa)
+	if err != nil {
+		return nil, nil
+	}
+
+	var vineyardCount int
+	err = s.Pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT b.vineyard_id)
+		FROM blocks b
+		JOIN varieties v ON b.variety_id = v.id
+		JOIN harvest_records hr ON hr.block_id = b.id
+		JOIN vineyards vy ON vy.id = b.vineyard_id
+		WHERE vy.county = $1 AND v.name = $2 AND hr.deleted_at IS NULL
+		  AND b.vineyard_id != $3
+	`, county, varietyName, vineyardID).Scan(&vineyardCount)
+	if err != nil {
+		vineyardCount = 0
+	}
+
+	return &BenchmarkTeaser{
+		VarietyName:   varietyName,
+		UserYieldKgHa: userYieldKgHa,
+		VineyardCount: vineyardCount,
+	}, nil
+}
+
+// UserYield represents user harvest data aggregated by variety + year.
+type UserYield struct {
+	VarietyName string
+	Year        int
+	YieldKgHa   float64
+	TotalYield  float64
+	AreaHA      float64
+}
+
+// RegionalBenchmark represents county-level benchmark data.
+type RegionalBenchmark struct {
+	VarietyName   string
+	Year          int
+	AvgYieldKgHa  float64
+	MinYieldKgHa  float64
+	MaxYieldKgHa  float64
+	VineyardCount int
+}
+
+// BenchmarkResult holds all data for the benchmark page.
+type BenchmarkResult struct {
+	UserYields    []UserYield
+	RegionalBench []RegionalBenchmark
+	Timeline      []struct {
+		Year    int
+		YieldKg float64
+		Variety string
+	}
+}
+
+// GetBenchmarkData retrieves all data needed for the benchmark page.
+func (s *Store) GetBenchmarkData(ctx context.Context, vineyardID int64) BenchmarkResult {
+	var result BenchmarkResult
+
+	// User yields by variety + year
+	rows, err := s.Pool.Query(ctx, `
+		SELECT v.name, hr.harvest_year, ROUND(hr.yield_kg / b.area_ha, 2),
+		       hr.yield_kg, b.area_ha
+		FROM harvest_records hr
+		JOIN blocks b ON hr.block_id = b.id
+		JOIN varieties v ON b.variety_id = v.id
+		WHERE b.vineyard_id = $1 AND hr.deleted_at IS NULL
+		ORDER BY hr.harvest_year DESC, v.name
+	`, vineyardID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var uy UserYield
+			if err := rows.Scan(&uy.VarietyName, &uy.Year, &uy.YieldKgHa, &uy.TotalYield, &uy.AreaHA); err != nil {
+				continue
+			}
+			result.UserYields = append(result.UserYields, uy)
+		}
+	}
+
+	// Regional benchmarks (min 3 vineyards)
+	rows, err = s.Pool.Query(ctx, `
+		SELECT v.name, hr.harvest_year,
+		       ROUND(AVG(hr.yield_kg / b.area_ha), 2),
+		       ROUND(MIN(hr.yield_kg / b.area_ha), 2),
+		       ROUND(MAX(hr.yield_kg / b.area_ha), 2),
+		       COUNT(DISTINCT b.vineyard_id)
+		FROM harvest_records hr
+		JOIN blocks b ON hr.block_id = b.id
+		JOIN varieties v ON b.variety_id = v.id
+		JOIN vineyards vy ON vy.id = b.vineyard_id
+		WHERE vy.county = (SELECT county FROM vineyards WHERE id = $1) AND hr.deleted_at IS NULL
+		GROUP BY v.name, hr.harvest_year
+		HAVING COUNT(DISTINCT b.vineyard_id) >= 3
+		ORDER BY hr.harvest_year DESC, v.name
+	`, vineyardID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var rb RegionalBenchmark
+			if err := rows.Scan(&rb.VarietyName, &rb.Year, &rb.AvgYieldKgHa, &rb.MinYieldKgHa, &rb.MaxYieldKgHa, &rb.VineyardCount); err != nil {
+				continue
+			}
+			result.RegionalBench = append(result.RegionalBench, rb)
+		}
+	}
+
+	// Timeline
+	rows, err = s.Pool.Query(ctx, `
+		SELECT hr.harvest_year, hr.yield_kg, v.name
+		FROM harvest_records hr
+		JOIN blocks b ON hr.block_id = b.id
+		JOIN varieties v ON b.variety_id = v.id
+		WHERE b.vineyard_id = $1 AND hr.deleted_at IS NULL
+		ORDER BY hr.harvest_year DESC
+	`, vineyardID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var t struct {
+				Year    int
+				YieldKg float64
+				Variety string
+			}
+			if err := rows.Scan(&t.Year, &t.YieldKg, &t.Variety); err != nil {
+				continue
+			}
+			result.Timeline = append(result.Timeline, t)
+		}
+	}
+
+	return result
+}

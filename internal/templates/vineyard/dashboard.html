@@ -1,0 +1,123 @@
+{{template "base.html" .}}
+{{template "nav.html" .}}
+
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<main class="max-w-7xl mx-auto px-4 py-4">
+    <!-- Vineyard header -->
+    <div class="mb-8">
+        <h1 class="mt-0 mb-1 text-2xl">{{.Vineyard.Name}}</h1>
+        <p class="text-gray-500 m-0">
+            {{.Vineyard.County}} · {{.Vineyard.Municipality}}
+            {{if .Vineyard.EstablishedYear}} · Startad {{.Vineyard.EstablishedYear}}{{end}}
+            {{if .Vineyard.TotalAreaHA}} · {{.Vineyard.TotalAreaHA}} ha{{end}}
+        </p>
+        <p class="text-gray-500 m-0 mt-1">
+            {{if .Vineyard.Organic}}🌿 Ekologisk{{end}}
+            {{if and .Vineyard.Organic .Vineyard.Biodynamic}} · {{end}}
+            {{if .Vineyard.Biodynamic}}🌀 Biodynamisk{{end}}
+        </p>
+    </div>
+
+    <!-- Benchmark teaser -->
+    {{if .BenchmarkTeaser}}
+    <div class="bg-green-50 p-4 rounded mb-8 border border-green-200">
+        <h3 class="mt-0 mb-1 text-base font-semibold">📊 Benchmark — {{.BenchmarkTeaser.VarietyName}}</h3>
+        <p class="m-0 text-sm text-gray-700">
+            Din skörd: <strong>{{.BenchmarkTeaser.UserYieldKgHa}} kg/ha</strong>
+            <span class="text-gray-500"> · {{.BenchmarkTeaser.VineyardCount}} vingård{{if ne .BenchmarkTeaser.VineyardCount 1}}ar{{end}} i {{.Vineyard.County}}</span>
+        </p>
+        <a href="/vineyard/{{.Vineyard.ID}}/benchmark"
+           class="text-sm text-[#2d6a2d] mt-2 inline-block hover:underline no-underline">
+            Se hela jämförelsen →
+        </a>
+    </div>
+    {{end}}
+
+    <!-- Blocks section -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="mt-0 mb-0 text-xl">Block</h2>
+            <a href="/vineyard/{{.Vineyard.ID}}/blocks/new"
+               class="px-4 py-2 bg-[#2d6a2d] text-white rounded no-underline text-sm hover:bg-green-800">
+                + Nytt block
+            </a>
+        </div>
+
+        {{if eq (len .Blocks) 0}}
+        <div class="text-center py-12 bg-white border border-gray-300 rounded">
+            <p class="text-gray-400 text-lg">Inga block ännu. Skapa ditt första block!</p>
+            <a href="/vineyard/{{.Vineyard.ID}}/blocks/new"
+               class="mt-4 px-4 py-2 bg-[#2d6a2d] text-white rounded text-sm no-underline inline-block">
+                Skapa block
+            </a>
+        </div>
+        {{else}}
+        <div class="bg-white border border-gray-300 rounded overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-300 text-left">
+                        <th class="p-3 text-sm font-semibold text-gray-500">Namn</th>
+                        <th class="p-3 text-sm font-semibold text-gray-500">Sort</th>
+                        <th class="p-3 text-sm font-semibold text-gray-500">Area</th>
+                        <th class="p-3 text-sm font-semibold text-gray-500">Senaste skörden</th>
+                        <th class="p-3 text-sm font-semibold text-gray-500"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Blocks}}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="p-3">
+                            <strong>{{.Block.BlockName}}</strong>
+                            {{if not .IsActive}}<span class="text-gray-400 text-xs ml-1">(inaktiv)</span>{{end}}
+                        </td>
+                        <td class="p-3">
+                            <span {{if eq .VarietyStatus "review_needed"}}class="text-[#856404]"{{end}}>
+                                {{.VarietyName}}
+                            </span>
+                            {{if eq .VarietyStatus "review_needed"}}
+                            <span class="text-xs text-[#856404] ml-1">(granskas)</span>
+                            {{end}}
+                        </td>
+                        <td class="p-3 text-gray-600">{{.Block.AreaHA}} ha</td>
+                        <td class="p-3 text-gray-600">
+                            {{if .LatestHarvest}}
+                                {{.LatestHarvest.HarvestYear}}: {{.LatestHarvest.YieldKg}} kg
+                            {{else}}
+                                <span class="text-gray-300">—</span>
+                            {{end}}
+                        </td>
+                        <td class="p-3 text-right">
+                            <a href="/vineyard/{{$.Vineyard.ID}}/blocks/{{.Block.ID}}/edit"
+                               class="text-sm text-gray-500 hover:text-[#2d6a2d] no-underline px-2 py-1">
+                                Redigera
+                            </a>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Quick actions -->
+    <div class="flex gap-3 mt-6">
+        <a href="/vineyard/{{.Vineyard.ID}}/harvest/new"
+           class="px-4 py-2 bg-white border border-gray-300 rounded text-sm no-underline hover:bg-gray-50">
+            🌾 Registrera skörd
+        </a>
+        <a href="/vineyard/{{.Vineyard.ID}}/benchmark"
+           class="px-4 py-2 bg-white border border-gray-300 rounded text-sm no-underline hover:bg-gray-50">
+            📊 Jämförelse
+        </a>
+        {{if eq .Role "owner"}}
+        <a href="/vineyard/{{.Vineyard.ID}}/settings"
+           class="px-4 py-2 bg-white border border-gray-300 rounded text-sm no-underline hover:bg-gray-50">
+            ⚙️ Inställningar
+        </a>
+        {{end}}
+    </div>
+</main>
+{{end}}

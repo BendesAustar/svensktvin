@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -55,6 +57,9 @@ func main() {
 	// Initialize auth handlers
 	authHandler := pages.NewAuthHandler(store, sessionMgr, magicLinkMgr, rateLimiter, cfg, emailSender)
 
+	// Initialize vineyard handlers
+	vineyardHandler := pages.NewVineyardHandler(store, sessionMgr)
+
 	// Generate session secret (or load from config)
 	sessionSecret := cfg.SessionSecret
 	if sessionSecret == "" {
@@ -62,7 +67,7 @@ func main() {
 	}
 
 	// Load templates
-	templates, err := loadTemplates(cfg.TemplateMode)
+	templates, err := loadTemplates(getTemplateFuncMap())
 	if err != nil {
 		slog.Error("failed to load templates", "err", err)
 		os.Exit(1)
@@ -91,15 +96,9 @@ func main() {
 	mux.HandleFunc("POST /invite/confirm", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleInviteConfirmPOST(templates)))
 
 	// Vineyard routes (require auth)
-	mux.HandleFunc("GET /vineyard", func(w http.ResponseWriter, r *http.Request) {
-		user := sessionMgr.SessionFromRequest(r)
-		if user == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		// Redirect to user's first vineyard (simplified for Phase 2)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	})
+	mux.HandleFunc("GET /vineyard", vineyardHandler.HandleLandingGET(templates))
+	mux.HandleFunc("GET /vineyard/", vineyardHandler.HandleVineyardGET(templates))
+	mux.HandleFunc("GET /vineyard/benchmark", vineyardHandler.HandleBenchmarkGET(templates))
 
 	// Static files
 	staticDir := "static"
@@ -149,26 +148,54 @@ func main() {
 }
 
 // loadTemplates loads all Go HTML templates from the templates directory.
-func loadTemplates(mode string) (*template.Template, error) {
-	// Resolve templates directory relative to binary or working directory
-	templatePaths := []string{
-		"internal/templates/**/*.html",
-		"templates/**/*.html",
+func loadTemplates(funcMap template.FuncMap) (*template.Template, error) {
+	// Try multiple template directories
+	templateDirs := []string{
+		"internal/templates",
+		"templates",
 	}
 
-	var tmpl *template.Template
-	var err error
-
-	for _, pattern := range templatePaths {
-		tmpl, err = template.ParseGlob(pattern)
-		if err == nil {
-			slog.Info("svensktvin: templates loaded", "pattern", pattern)
-			return tmpl, nil
+	for _, dir := range templateDirs {
+		tmpl, err := loadTemplatesFromDir(dir, funcMap)
+		if err != nil {
+			slog.Debug("svensktvin: template dir not found", "dir", dir, "err", err)
+			continue
 		}
-		slog.Debug("svensktvin: template pattern not found", "pattern", pattern)
+		slog.Info("svensktvin: templates loaded", "dir", dir, "count", len(tmpl.Templates()))
+		return tmpl, nil
 	}
 
-	return nil, fmt.Errorf("no templates found in %v", templatePaths)
+	return nil, fmt.Errorf("no templates found in %v", templateDirs)
+}
+
+// loadTemplatesFromDir recursively loads all .html templates from a directory.
+func loadTemplatesFromDir(dir string, funcMap template.FuncMap) (*template.Template, error) {
+	var paths []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(path, ".html") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walk templates dir %s: %w", dir, err)
+	}
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("no .html files found in %s", dir)
+	}
+
+	// Load templates with the func map
+	tmpl := template.New("")
+	tmpl = tmpl.Funcs(funcMap)
+	_, err = tmpl.ParseFiles(paths...)
+	if err != nil {
+		return nil, fmt.Errorf("parse templates: %w", err)
+	}
+
+	return tmpl, nil
 }
 
 // getTemplateFuncMap returns template helper functions.
