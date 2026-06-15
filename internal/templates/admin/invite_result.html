@@ -1,3 +1,4 @@
+{{define "admin/invite_result.html"}}
 {{if .EmailSent}}
 <div class="bg-green-100 p-3 rounded mt-2 text-sm">
     ✅ Inbjudan skickad till {{.InviteEmail}}
@@ -11,4 +12,5 @@
 <div class="bg-gray-100 p-3 rounded mt-2 text-sm">
     Inbjudan skapad för {{.InviteEmail}}
 </div>
+{{end}}
 {{end}}

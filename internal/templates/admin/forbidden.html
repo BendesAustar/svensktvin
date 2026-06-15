@@ -1,3 +1,4 @@
+{{define "admin/forbidden.html"}}
 {{template "admin/layout.html" .}}
 {{define "content"}}
 <div class="max-w-md text-center py-12">
@@ -5,4 +6,5 @@
     <p class="text-gray-600 mb-6">{{.Error}}</p>
     <a href="/vineyard" class="text-[#2d6a2d] no-underline">← Tillbaka till vingården</a>
 </div>
+{{end}}
 {{end}}
