@@ -1,5 +1,28 @@
+# Binary
+/web
+/web.exe
+
+# Node modules
 node_modules/
-dist/
-build/
-.svelte-kit/
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.exe
+*.o
+*.a
+*.so
+
+# Logs
+*.log

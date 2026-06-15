@@ -1,0 +1,154 @@
+// Package config loads and validates application configuration from YAML + environment variables.
+package config
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
+
+// SMTPConfig holds SMTP server settings for email sending.
+type SMTPConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+	User string `yaml:"user"`
+	Pass string `yaml:"pass"`
+	From string `yaml:"from"`
+}
+
+// Config holds all application configuration.
+type Config struct {
+	Port    int           `yaml:"port"`
+	API     APIConfig     `yaml:"api"`
+	Database DatabaseConfig `yaml:"database"`
+	Auth    AuthConfig     `yaml:"auth"`
+	RateLimit RateLimitConfig `yaml:"rate_limit"`
+	SessionSecret string      `yaml:"session_secret"`
+	SMTP    SMTPConfig    `yaml:"smtp"`
+	AppHost string        `yaml:"app_host"`
+	TemplateMode string     `yaml:"template_mode"` // "dev" (CDN) or "prod" (prebuilt)
+}
+
+// APIConfig holds HTTP server settings.
+type APIConfig struct {
+	Port int `yaml:"port"`
+}
+
+// DatabaseConfig holds database connection settings.
+type DatabaseConfig struct {
+	URL string `yaml:"url"`
+}
+
+// AuthConfig holds authentication settings.
+type AuthConfig struct {
+	SessionExpiry time.Duration `yaml:"session_expiry"`
+}
+
+// RateLimitConfig holds rate limiting settings.
+type RateLimitConfig struct {
+	AuthRequests int           `yaml:"auth_requests"`
+	AuthWindow   time.Duration `yaml:"auth_window"`
+}
+
+// Load reads configuration from a YAML file and falls back to environment variables.
+func Load(path string) (*Config, error) {
+	var cfg Config
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Fallback to environment variables
+		cfg = Config{
+			Port:    envInt("PORT", 8080),
+			Database: DatabaseConfig{
+				URL: envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin"),
+			},
+			Auth: AuthConfig{
+				SessionExpiry: 30 * 24 * time.Hour,
+			},
+			RateLimit: RateLimitConfig{
+				AuthRequests: 5,
+				AuthWindow:   15 * time.Minute,
+			},
+			SMTP: SMTPConfig{
+				Port: 587,
+			},
+			TemplateMode: "dev",
+		}
+		return &cfg, nil
+	}
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// Apply environment variable overrides (env takes precedence)
+	if cfg.Port == 0 {
+		cfg.Port = envInt("PORT", 8080)
+	}
+	if cfg.Database.URL == "" {
+		cfg.Database.URL = envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin")
+	}
+	if cfg.Auth.SessionExpiry == 0 {
+		cfg.Auth.SessionExpiry = 30 * 24 * time.Hour
+	}
+	if cfg.RateLimit.AuthRequests == 0 {
+		cfg.RateLimit.AuthRequests = 5
+	}
+	if cfg.RateLimit.AuthWindow == 0 {
+		cfg.RateLimit.AuthWindow = 15 * time.Minute
+	}
+	if cfg.SMTP.Port == 0 {
+		cfg.SMTP.Port = 587
+	}
+
+	// Environment variable overrides for SMTP
+	if smtpHost := os.Getenv("SMTP_HOST"); smtpHost != "" {
+		cfg.SMTP.Host = smtpHost
+	}
+	if smtpPort := os.Getenv("SMTP_PORT"); smtpPort != "" {
+		if p := envInt("SMTP_PORT", 0); p > 0 {
+			cfg.SMTP.Port = p
+		}
+	}
+	if smtpUser := os.Getenv("SMTP_USER"); smtpUser != "" {
+		cfg.SMTP.User = smtpUser
+	}
+	if smtpPass := os.Getenv("SMTP_PASS"); smtpPass != "" {
+		cfg.SMTP.Pass = smtpPass
+	}
+	if smtpFrom := os.Getenv("SMTP_FROM"); smtpFrom != "" {
+		cfg.SMTP.From = smtpFrom
+	}
+	if sessionSecret := os.Getenv("SESSION_SECRET"); sessionSecret != "" {
+		cfg.SessionSecret = sessionSecret
+	}
+	if appHost := os.Getenv("APP_HOST"); appHost != "" {
+		cfg.AppHost = appHost
+	}
+
+	return &cfg, nil
+}
+
+// envOr returns the value of the environment variable named by key, or fallback if empty.
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// envInt returns the integer value of the environment variable named by key, or fallback if empty/invalid.
+func envInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n := 0
+	fmt.Sscanf(v, "%d", &n)
+	if n == 0 {
+		return fallback
+	}
+	return n
+}
