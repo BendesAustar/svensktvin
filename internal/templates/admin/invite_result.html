@@ -1,0 +1,14 @@
+{{if .EmailSent}}
+<div class="bg-green-100 p-3 rounded mt-2 text-sm">
+    ✅ Inbjudan skickad till {{.InviteEmail}}
+</div>
+{{else if .InviteURL}}
+<div class="bg-yellow-100 p-3 rounded mt-2 text-sm">
+    ⚠ SMTP inte konfigurerad. Kopiera länken och skicka manuellt:<br>
+    <code class="break-all">{{.InviteURL}}</code>
+</div>
+{{else}}
+<div class="bg-gray-100 p-3 rounded mt-2 text-sm">
+    Inbjudan skapad för {{.InviteEmail}}
+</div>
+{{end}}

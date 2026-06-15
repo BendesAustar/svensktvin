@@ -1,0 +1,79 @@
+{{template "admin/layout.html" .}}
+{{define "content"}}
+<div class="grid gap-4 md:grid-cols-3 mb-8">
+    <div class="bg-white border border-gray-200 rounded p-4">
+        <p class="text-sm text-gray-500 mb-1">Totala användare</p>
+        <p class="text-3xl font-bold">{{.UserCount}}</p>
+    </div>
+    <div class="bg-white border border-gray-200 rounded p-4">
+        <p class="text-sm text-gray-500 mb-1">Administratörer</p>
+        <p class="text-3xl font-bold">{{.AdminCount}}</p>
+    </div>
+    <div class="bg-white border border-gray-200 rounded p-4">
+        <p class="text-sm text-gray-500 mb-1">Aktiva</p>
+        <p class="text-3xl font-bold">{{.ActiveCount}}</p>
+    </div>
+</div>
+
+<h2 class="text-lg font-semibold mb-3">Senaste inloggningar</h2>
+{{if .RecentLogins}}
+<table class="w-full text-sm">
+    <thead>
+        <tr class="text-left text-gray-500 border-b">
+            <th class="pb-2">Namn</th>
+            <th class="pb-2">E-post</th>
+            <th class="pb-2">Senast inloggad</th>
+            <th class="pb-2">Roll</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .RecentLogins}}
+        <tr class="border-b border-gray-100">
+            <td class="py-2">{{.Name}}</td>
+            <td class="py-2">{{.Email}}</td>
+            <td class="py-2">
+                {{if .LastLogin}}
+                    {{.LastLogin.Format "2006-01-02 15:04"}}
+                {{else}}
+                    <span class="text-gray-400">Aldrig</span>
+                {{end}}
+            </td>
+            <td class="py-2">
+                {{if .IsAdmin}}
+                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">Admin</span>
+                {{else}}
+                    <span class="text-gray-500">Användare</span>
+                {{end}}
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{else}}
+<p class="text-gray-500">Inga inloggningar registrerade.</p>
+{{end}}
+
+<h2 class="text-lg font-semibold mb-3 mt-8">Senaste admin-åtgärder</h2>
+{{if .RecentActions}}
+<table class="w-full text-sm">
+    <thead>
+        <tr class="text-left text-gray-500 border-b">
+            <th class="pb-2">Åtgärd</th>
+            <th class="pb-2">Admin</th>
+            <th class="pb-2">Tid</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .RecentActions}}
+        <tr class="border-b border-gray-100">
+            <td class="py-2">{{.Action}}</td>
+            <td class="py-2">{{.Email}}</td>
+            <td class="py-2">{{.Time.Format "2006-01-02 15:04"}}</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{else}}
+<p class="text-gray-500">Inga admin-åtgärder registrerade.</p>
+{{end}}
+{{end}}

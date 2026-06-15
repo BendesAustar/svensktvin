@@ -103,7 +103,8 @@ func (h *BlockHandler) handleBlockNewGET(tmpl *template.Template) http.HandlerFu
 		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
-			"User":     user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Role":     role,
 			"Vineyard": *vineyard,
 			"CSRFToken": csrfToken,
@@ -172,7 +173,8 @@ func (h *BlockHandler) handleBlockNewPOST(tmpl *template.Template) http.HandlerF
 
 		if len(fieldErrors) > 0 {
 			data := map[string]any{
-				"User":           user,
+				"User": user,
+			"IsAdmin": user.IsAdmin,
 				"VineyardID":     vineyardID,
 				"Error":          "Vänligen fyll i alla obligatoriska fält.",
 				"FieldErrors":    fieldErrors,
@@ -201,7 +203,8 @@ func (h *BlockHandler) handleBlockNewPOST(tmpl *template.Template) http.HandlerF
 			if parseErr != nil || id <= 0 {
 				fieldErrors = append(fieldErrors, ValidationError{Field: "variety", Issue: "Ogiltig sort-ID."})
 				data := map[string]any{
-					"User": user, "VineyardID": vineyardID,
+					"User": user,
+			"IsAdmin": user.IsAdmin, "VineyardID": vineyardID,
 					"Error": "Ogiltig sort. Välj en giltig sort.",
 					"FieldErrors": fieldErrors,
 					"CSRFToken": generateCSRFToken(),
@@ -234,7 +237,8 @@ func (h *BlockHandler) handleBlockNewPOST(tmpl *template.Template) http.HandlerF
 		if err != nil {
 			if contains(err.Error(), "duplicate key") {
 				data := map[string]any{
-					"User": user, "VineyardID": vineyardID,
+					"User": user,
+			"IsAdmin": user.IsAdmin, "VineyardID": vineyardID,
 					"Error": "Ett block med detta namn finns redan i vingården.",
 					"CSRFToken": generateCSRFToken(),
 					"Title": "Nytt block — Svenskt Vin",
@@ -299,7 +303,8 @@ func (h *BlockHandler) handleBlockEditGET(tmpl *template.Template) http.HandlerF
 		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
-			"User":           user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Role":           role,
 			"Vineyard":       *vineyard,
 			"Block":          result.Block,
@@ -341,7 +346,8 @@ func (h *BlockHandler) handleBlockEditPOST(tmpl *template.Template) http.Handler
 				return
 			}
 			data := map[string]any{
-				"User": user, "Vineyard": result, "Block": result.Block,
+				"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": result, "Block": result.Block,
 				"Error": "Ogiltig begäran. Försök igen.",
 				"CSRFToken": "",
 				"Title": "Redigera block — Svenskt Vin",
@@ -385,7 +391,8 @@ func (h *BlockHandler) handleBlockEditPOST(tmpl *template.Template) http.Handler
 				return
 			}
 			data := map[string]any{
-				"User": user, "Vineyard": result, "Block": result.Block,
+				"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": result, "Block": result.Block,
 				"Error": "Vänligen fyll i alla obligatoriska fält.",
 				"FieldErrors": fieldErrors,
 				"CSRFToken": generateCSRFToken(),
@@ -417,7 +424,8 @@ func (h *BlockHandler) handleBlockEditPOST(tmpl *template.Template) http.Handler
 					return
 				}
 				data := map[string]any{
-					"User": user, "Vineyard": result, "Block": result.Block,
+					"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": result, "Block": result.Block,
 					"Error": "Ogiltig sort. Välj en giltig sort.",
 					"FieldErrors": fieldErrors,
 					"CSRFToken": generateCSRFToken(),
@@ -455,7 +463,8 @@ func (h *BlockHandler) handleBlockEditPOST(tmpl *template.Template) http.Handler
 					return
 				}
 				data := map[string]any{
-					"User": user, "Vineyard": result, "Block": result.Block,
+					"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": result, "Block": result.Block,
 					"Error": "Ett block med detta namn finns redan i vingården.",
 					"CSRFToken": generateCSRFToken(),
 					"Title": "Redigera block — Svenskt Vin",

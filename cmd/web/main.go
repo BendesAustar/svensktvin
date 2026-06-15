@@ -23,6 +23,12 @@ import (
 )
 
 func main() {
+	// Check for admin bootstrap CLI subcommand
+	if len(os.Args) > 1 && os.Args[1] == "admin" && len(os.Args) > 2 && os.Args[2] == "bootstrap" {
+		ExecuteAdminBootstrap(os.Args[3:])
+		return
+	}
+
 	// Load configuration
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
@@ -85,6 +91,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize admin handler (needs templates)
+	adminHandler := pages.NewAdminHandler(store, sessionMgr, cfg.Cookie, emailSender, cfg.AppHost, templates)
+
 	// Build router
 	mux := http.NewServeMux()
 
@@ -128,6 +137,15 @@ func main() {
 	// API routes (for HTMX/Alpine JSON endpoints)
 	mux.HandleFunc("GET /api/varieties/search", varietySearchHandler.HandleGET)
 	mux.HandleFunc("POST /api/geo/reverse", geoReverseHandler.HandlePOST)
+
+	// Admin routes (require admin authentication)
+	mux.HandleFunc("GET /admin", sessionMgr.RequireAdmin(adminHandler.HandleDashboardGET()))
+	mux.HandleFunc("GET /admin/", sessionMgr.RequireAdmin(adminHandler.HandleDashboardGET()))
+	mux.HandleFunc("GET /admin/users", sessionMgr.RequireAdmin(adminHandler.HandleUsersGET()))
+	mux.HandleFunc("GET /admin/vineyard", sessionMgr.RequireAdmin(adminHandler.HandleDashboardGET()))
+	mux.HandleFunc("GET /admin/users/{id}", sessionMgr.RequireAdmin(adminHandler.HandleUserDetailGET()))
+	mux.HandleFunc("POST /admin/users/{id}", sessionMgr.RequireAdmin(adminHandler.HandleUserDetailPOST()))
+	mux.HandleFunc("POST /admin/users/invite", sessionMgr.RequireAdmin(adminHandler.HandleInviteGeneratePOST()))
 
 	// Create server
 	server := &http.Server{

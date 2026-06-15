@@ -136,6 +136,24 @@ func (sm *SessionManager) RequireAuth(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// RequireAdmin is a middleware that verifies session authentication AND admin status.
+// Wraps RequireAuth: first checks session validity, then checks is_admin flag.
+func (sm *SessionManager) RequireAdmin(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userInfo := sm.SessionFromRequest(r)
+		if userInfo == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		if !userInfo.IsAdmin {
+			http.Error(w, "Åtkomst nekad", http.StatusForbidden)
+			return
+		}
+		ctx := contextWithUser(r.Context(), *userInfo)
+		h.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
 // SessionFromRequest extracts session from cookie (for template-based auth).
 func (sm *SessionManager) SessionFromRequest(r *http.Request) *UserInfo {
 	cookie, err := r.Cookie("session_id")

@@ -12,6 +12,7 @@ type User struct {
 	IsAdmin        bool       `json:"is_admin"`
 	Active         bool       `json:"active"`
 	LastLogin      *time.Time `json:"last_login,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // Session represents an active user session.

@@ -1,0 +1,8 @@
+{{template "admin/layout.html" .}}
+{{define "content"}}
+<div class="max-w-md text-center py-12">
+    <h1 class="text-3xl mb-4">Åtkomst nekad</h1>
+    <p class="text-gray-600 mb-6">{{.Error}}</p>
+    <a href="/vineyard" class="text-[#2d6a2d] no-underline">← Tillbaka till vingården</a>
+</div>
+{{end}}

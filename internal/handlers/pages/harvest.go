@@ -163,7 +163,8 @@ func (h *HarvestHandler) handleHarvestNewGET(tmpl *template.Template) http.Handl
 		}
 
 		data := map[string]any{
-			"User":        user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Role":        role,
 			"Vineyard":    *vineyard,
 			"Blocks":      blocks,
@@ -277,7 +278,8 @@ func (h *HarvestHandler) handleHarvestNewPOST(tmpl *template.Template) http.Hand
 
 		if len(fieldErrors) > 0 {
 			data := map[string]any{
-				"User":           user,
+				"User": user,
+			"IsAdmin": user.IsAdmin,
 				"VineyardID":     vineyardID,
 				"Error":          "Vänligen fyll i alla obligatoriska fält.",
 				"FieldErrors":    fieldErrors,
@@ -322,6 +324,7 @@ func (h *HarvestHandler) handleHarvestNewPOST(tmpl *template.Template) http.Hand
 					}
 					data := map[string]any{
 						"User": user,
+			"IsAdmin": user.IsAdmin,
 						"Vineyard": vineyardID,
 						"Error": "Vänligen fyll i alla obligatoriska fält.",
 						"FieldErrors": fieldErrors,
@@ -361,7 +364,8 @@ func (h *HarvestHandler) handleHarvestNewPOST(tmpl *template.Template) http.Hand
 		if err != nil {
 			if strings.Contains(err.Error(), "duplicate key") {
 				data := map[string]any{
-					"User": user, "VineyardID": vineyardID,
+					"User": user,
+			"IsAdmin": user.IsAdmin, "VineyardID": vineyardID,
 					"Error": fmt.Sprintf("En skörd från år %d finns redan för detta block.", harvestYear),
 					"CSRFToken": generateCSRFToken(),
 					"Title": "Ny skörd — Svenskt Vin",
@@ -438,7 +442,8 @@ func (h *HarvestHandler) handleHarvestEditGET(tmpl *template.Template) http.Hand
 		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
-			"User":        user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Role":        role,
 			"Vineyard":    *vineyard,
 			"Harvest":     harvest,
@@ -477,7 +482,8 @@ func (h *HarvestHandler) handleHarvestEditPOST(tmpl *template.Template) http.Han
 				return
 			}
 			data := map[string]any{
-				"User": user, "Vineyard": harvest, "Harvest": harvest,
+				"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": harvest, "Harvest": harvest,
 				"Error": "Ogiltig begäran. Försök igen.",
 				"CSRFToken": "",
 				"Title": "Redigera skörd — Svenskt Vin",
@@ -561,7 +567,8 @@ func (h *HarvestHandler) handleHarvestEditPOST(tmpl *template.Template) http.Han
 				return
 			}
 			data := map[string]any{
-				"User": user, "Vineyard": harvest, "Harvest": harvest,
+				"User": user,
+			"IsAdmin": user.IsAdmin, "Vineyard": harvest, "Harvest": harvest,
 				"Error": "Vänligen fyll i alla obligatoriska fält.",
 				"FieldErrors": fieldErrors,
 				"CSRFToken": generateCSRFToken(),
@@ -583,6 +590,7 @@ func (h *HarvestHandler) handleHarvestEditPOST(tmpl *template.Template) http.Han
 				}
 				ctxData := map[string]any{
 					"User": user,
+			"IsAdmin": user.IsAdmin,
 					"Error": "Vänligen fyll i alla obligatoriska fält.",
 					"FieldErrors": fieldErrors,
 					"CSRFToken": generateCSRFToken(),

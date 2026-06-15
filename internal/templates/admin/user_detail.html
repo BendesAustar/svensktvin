@@ -1,0 +1,81 @@
+{{template "admin/layout.html" .}}
+{{define "content"}}
+<div class="max-w-xl">
+    <div class="bg-white border border-gray-200 rounded p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">Användarinformation</h2>
+        <dl class="space-y-3">
+            <dt class="text-sm text-gray-500">Namn</dt>
+            <dd class="font-medium">{{.TargetUser.Name}}</dd>
+
+            <dt class="text-sm text-gray-500">E-post</dt>
+            <dd class="font-medium">{{.TargetUser.Email}}</dd>
+
+            <dt class="text-sm text-gray-500">Roll</dt>
+            <dd>
+                {{if .TargetUser.IsAdmin}}
+                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-sm">Administratör</span>
+                {{else}}
+                    <span class="text-gray-500">Användare</span>
+                {{end}}
+            </dd>
+
+            <dt class="text-sm text-gray-500">Status</dt>
+            <dd>
+                {{if .TargetUser.Active}}
+                    <span class="text-green-600">Aktive</span>
+                {{else}}
+                    <span class="text-red-600">Inaktiv</span>
+                {{end}}
+            </dd>
+
+            <dt class="text-sm text-gray-500">Skapad</dt>
+            <dd>{{.TargetUser.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+
+            <dt class="text-sm text-gray-500">Senast inloggad</dt>
+            <dd>
+                {{if .TargetUser.LastLogin}}
+                    {{.TargetUser.LastLogin.Format "2006-01-02 15:04"}}
+                {{else}}
+                    <span class="text-gray-400">Aldrig inloggad</span>
+                {{end}}
+            </dd>
+        </dl>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded p-6">
+        <h2 class="text-lg font-semibold mb-4">Åtgärder</h2>
+        <form method="POST" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+            {{if .TargetUser.Active}}
+            <button type="submit" name="action" value="deactivate"
+                    class="px-4 py-2 bg-red-600 text-white rounded text-sm cursor-pointer">
+                Inaktivera konto
+            </button>
+            {{else}}
+            <button type="submit" name="action" value="activate"
+                    class="px-4 py-2 bg-green-600 text-white rounded text-sm cursor-pointer">
+                Aktivera konto
+            </button>
+            {{end}}
+
+            <button type="submit" name="action" value="reset_password"
+                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm cursor-pointer">
+                Återställ lösenord
+            </button>
+
+            {{if not .TargetUser.IsAdmin}}
+            <button type="submit" name="action" value="toggle_admin"
+                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm cursor-pointer">
+                Gör till administratör
+            </button>
+            {{else}}
+            <button type="submit" name="action" value="toggle_admin"
+                    class="px-4 py-2 bg-white border border-yellow-300 text-yellow-700 rounded text-sm cursor-pointer">
+                Ta bort administratörsrättigheter
+            </button>
+            {{end}}
+        </form>
+    </div>
+</div>
+{{end}}

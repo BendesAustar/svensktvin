@@ -4,6 +4,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -1019,4 +1020,101 @@ func (s *Store) SoftDeleteUser(ctx context.Context, userID int64) error {
 // InvalidateSessionsByUser invalidates all sessions for a user (alias for DeleteSessionsByUser).
 func (s *Store) InvalidateSessionsByUser(ctx context.Context, userID int64) error {
 	return s.DeleteSessionsByUser(ctx, userID)
+}
+
+// ListAllUsers returns all users ordered by creation date (newest first).
+func (s *Store) ListAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT id, email, password_hash, name, is_admin, active, created_at, last_login
+		FROM users
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list all users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(
+			&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.IsAdmin, &u.Active,
+			&u.CreatedAt, &u.LastLogin,
+		); err != nil {
+			continue
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+// GetUserByID retrieves a user by ID (active only).
+func (s *Store) GetUserByID(ctx context.Context, userID int64) (*User, error) {
+	var u User
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, email, password_hash, name, is_admin, active, created_at, last_login
+		FROM users
+		WHERE id = $1 AND active = true
+	`).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.IsAdmin, &u.Active,
+		&u.CreatedAt, &u.LastLogin)
+	if err != nil {
+		return nil, fmt.Errorf("get user by id: %w", err)
+	}
+	return &u, nil
+}
+
+// GetFirstAdmin returns the first admin user ordered by creation date.
+func (s *Store) GetFirstAdmin(ctx context.Context) (*User, error) {
+	var u User
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, email, password_hash, name, is_admin, active, created_at, last_login
+		FROM users
+		WHERE is_admin = true
+		ORDER BY created_at ASC
+		LIMIT 1
+	`).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.IsAdmin, &u.Active,
+		&u.CreatedAt, &u.LastLogin)
+	if err != nil {
+		return nil, fmt.Errorf("get first admin: %w", err)
+	}
+	return &u, nil
+}
+
+// UpdateUserActive sets a user's active status and invalidates their sessions if deactivated.
+func (s *Store) UpdateUserActive(ctx context.Context, userID int64, active bool) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE users SET active = $1 WHERE id = $2
+	`, active, userID)
+	if err != nil {
+		return fmt.Errorf("update user active: %w", err)
+	}
+	if !active {
+		_ = s.DeleteSessionsByUser(ctx, userID)
+	}
+	return nil
+}
+
+// UpdateUserPasswordHash updates a user's password hash.
+func (s *Store) UpdateUserPasswordHash(ctx context.Context, userID int64, hash string) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE users SET password_hash = $1 WHERE id = $2
+	`, hash, userID)
+	if err != nil {
+		return fmt.Errorf("update user password hash: %w", err)
+	}
+	return nil
+}
+
+// CountUsers returns total, admin, and active user counts.
+func (s *Store) CountUsers(ctx context.Context) (total, admins, active int) {
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COUNT(*),
+		       COUNT(*) FILTER (WHERE is_admin),
+		       COUNT(*) FILTER (WHERE active)
+		FROM users
+	`).Scan(&total, &admins, &active)
+	if err != nil {
+		slog.Error("db: count users", "err", err)
+	}
+	return
 }

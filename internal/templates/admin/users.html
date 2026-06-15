@@ -1,0 +1,75 @@
+{{template "admin/layout.html" .}}
+{{define "page_title"}}Användare — Svenskt Vin{{end}}
+{{define "content"}}
+<!-- Invite section -->
+<div class="bg-white border border-gray-200 rounded p-4 mb-6">
+    <h2 class="text-lg font-semibold mb-3">Bjud in användare</h2>
+    <form hx-post="/admin/users/invite" hx-swap="outerHTML" class="flex gap-3 items-end">
+        <div class="flex-1">
+            <label class="block text-sm text-gray-600 mb-1">E-postadress</label>
+            <input type="email" name="email" required
+                   class="w-full p-2 border border-gray-300 rounded text-sm" />
+        </div>
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">Roll</label>
+            <select name="role" class="p-2 border border-gray-300 rounded text-sm">
+                <option value="owner">Ägare</option>
+                <option value="editor">Redigerare</option>
+            </select>
+        </div>
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+        <button type="submit"
+                class="px-4 py-2 bg-[#2d6a2d] text-white rounded text-sm cursor-pointer">
+            Skicka inbjudan
+        </button>
+    </form>
+    <div id="invite-result"></div>
+</div>
+
+<!-- User list -->
+<table class="w-full text-sm bg-white border border-gray-200 rounded">
+    <thead>
+        <tr class="text-left text-gray-500 border-b">
+            <th class="p-3">Namn</th>
+            <th class="p-3">E-post</th>
+            <th class="p-3">Roll</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Senast inloggad</th>
+            <th class="p-3">Åtgärder</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Users}}
+        <tr class="border-b border-gray-100">
+            <td class="p-3"><a href="/admin/users/{{.ID}}" class="text-[#2d6a2d] no-underline hover:underline">{{.Name}}</a></td>
+            <td class="p-3">{{.Email}}</td>
+            <td class="p-3">
+                {{if .IsAdmin}}
+                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">Admin</span>
+                {{else}}
+                    <span class="text-gray-500">Användare</span>
+                {{end}}
+            </td>
+            <td class="p-3">
+                {{if .Active}}
+                    <span class="text-green-600">● Aktive</span>
+                {{else}}
+                    <span class="text-red-600">● Inaktiv</span>
+                {{end}}
+            </td>
+            <td class="p-3">
+                {{if .LastLogin}}
+                    {{.LastLogin.Format "2006-01-02"}}
+                {{else}}
+                    <span class="text-gray-400">—</span>
+                {{end}}
+            </td>
+            <td class="p-3">
+                <a href="/admin/users/{{.ID}}"
+                   class="text-sm text-[#2d6a2d] no-underline hover:underline">Redigera →</a>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{end}}

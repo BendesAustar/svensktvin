@@ -50,7 +50,8 @@ func (h *VineyardHandler) HandleLandingGET(tmpl *template.Template) http.Handler
 			slog.Error("landing: list vineyards", "err", err)
 			data := map[string]any{
 				"Error": "Kunde inte läsa dina vingårdar. Försök igen senare.",
-				"User":  user,
+				"User": user,
+			"IsAdmin": user.IsAdmin,
 				"Title": "Vingårdar — Svenskt Vin",
 			}
 			renderTemplate(w, tmpl, "vineyard/index.html", data)
@@ -60,7 +61,8 @@ func (h *VineyardHandler) HandleLandingGET(tmpl *template.Template) http.Handler
 		if len(vineyards) == 0 {
 			// No vineyards yet — show message
 			data := map[string]any{
-				"User":      user,
+				"User": user,
+			"IsAdmin": user.IsAdmin,
 				"NoVineyards": true,
 				"Title":     "Vingårdar — Svenskt Vin",
 			}
@@ -76,7 +78,8 @@ func (h *VineyardHandler) HandleLandingGET(tmpl *template.Template) http.Handler
 
 		// Multiple vineyards — show list
 		data := map[string]any{
-			"User":     user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Vineyards": vineyards,
 			"Title":    "Vingårdar — Svenskt Vin",
 		}
@@ -145,7 +148,8 @@ func (h *VineyardHandler) HandleVineyardGET(tmpl *template.Template) http.Handle
 		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
-			"User":            user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Role":            role,
 			"Vineyard":        *vineyard,
 			"Blocks":          blocks,
@@ -198,7 +202,8 @@ func (h *VineyardHandler) HandleBenchmarkGET(tmpl *template.Template) http.Handl
 		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
-			"User":            user,
+			"User": user,
+			"IsAdmin": user.IsAdmin,
 			"Vineyard":        *vineyard,
 			"UserYields":      benchData.UserYields,
 			"RegionalBench":   benchData.RegionalBench,
