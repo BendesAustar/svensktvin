@@ -1,0 +1,277 @@
+{{template "base.html" .}}
+
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<main class="max-w-2xl mx-auto mt-12 px-4">
+    <!-- Back link -->
+    <div class="mb-4">
+        <a href="/vineyard/{{.Vineyard.ID}}" class="text-gray-500 text-sm no-underline hover:text-[#2d6a2d]">
+            ← Tillbaka till {{.Vineyard.Name}}
+        </a>
+    </div>
+
+    <!-- Page title -->
+    <h1 class="text-2xl mb-6">Redigera block</h1>
+
+    {{if .Error}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="m-0">{{.Error}}</p>
+    </div>
+    {{end}}
+
+    {{if .FieldErrors}}
+    <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="m-0 pl-4">
+            {{range .FieldErrors}}
+            <li>{{.Field}}: {{.Issue}}</li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    <!-- Block edit form -->
+    <form id="block-edit-form"
+          hx-post="/vineyard/{{.Vineyard.ID}}/blocks/{{.Block.ID}}/edit"
+          hx-swap="none"
+          hx-indicator="#block-edit-form .submit-btn"
+          class="space-y-6">
+
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+        <!-- Block name -->
+        <div>
+            <label for="block_name" class="block mb-1 text-sm font-semibold text-gray-700">
+                Blocknamn <span class="text-red-600">*</span>
+            </label>
+            <input id="block_name" type="text" name="block_name" required
+                   value="{{if .BlockName}}{{.BlockName}}{{else}}{{.Block.BlockName}}{{end}}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+        </div>
+
+        <!-- Current variety display -->
+        {{if .VarietyName}}
+        <div class="bg-gray-50 border border-gray-200 rounded p-3">
+            <p class="text-sm text-gray-600 m-0">
+                Nuvarande sort: <strong>{{.VarietyName}}</strong>
+                {{if .VarietyColor}}
+                <span class="text-gray-400"> ({{.VarietyColor}})</span>
+                {{end}}
+            </p>
+        </div>
+        {{end}}
+
+        <!-- Variety search with Alpine.js -->
+        <div x-data="varietySearch()" class="mb-6">
+            <label for="variety-search" class="block mb-1 text-sm font-semibold text-gray-700">
+                Sort <span class="text-red-600">*</span>
+            </label>
+
+            <input id="variety-search" type="text"
+                   placeholder="Sök sort..."
+                   x-model="searchQuery"
+                   @input.debounce.300ms="search()"
+                   class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+
+            <!-- Loading state -->
+            <div x-show="searching" x-cloak class="text-gray-500 text-sm py-2">
+                Söker...
+            </div>
+
+            <!-- Error state -->
+            <div x-show="searchError" x-cloak class="text-red-700 text-sm py-2">
+                {{.searchError}}
+            </div>
+
+            <!-- High-confidence match indicator -->
+            <div x-show="selectedVarietyId !== null" x-cloak class="text-green-700 text-sm py-2 flex items-center">
+                <span class="mr-2">✓</span>
+                <span x-text="searchQuery"></span>
+            </div>
+
+            <!-- Results dropdown -->
+            <ul x-show="searchResults.length > 0 && selectedVarietyId === null"
+                x-cloak
+                class="border border-gray-200 rounded mb-2 p-0 list-none max-h-48 overflow-y-auto">
+                <template x-for="result in searchResults" :key="result.id">
+                    <li>
+                        <button type="button"
+                                @click="select(result.id, result.name)"
+                                class="w-full text-left px-3 py-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">
+                            <span x-text="result.name"></span>
+                            <span class="text-gray-400 text-xs ml-2">
+                                (<span x-text="result.color"></span>
+                                <span x-show="result.piwi"> · PIWI</span>)
+                            </span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+
+            <!-- "No match — use custom name" button -->
+            <button type="button"
+                    x-show="searchResults.length > 0 && selectedVarietyId === null"
+                    @click="useCustom()"
+                    x-cloak
+                    class="px-3 py-1 bg-none border border-gray-300 rounded text-sm cursor-pointer text-gray-600 hover:bg-gray-50">
+                Ingen av dessa — använd detta namn
+            </button>
+
+            <!-- Hidden inputs for form submission -->
+            <input type="hidden" name="variety_id" x-model="selectedVarietyId" />
+            <input type="hidden" name="variety_name" x-model="customVarietyName" />
+        </div>
+
+        <!-- Block details fieldset -->
+        <fieldset class="border border-gray-300 rounded p-4">
+            <legend class="font-semibold px-2 text-gray-700">Blockinformation</legend>
+
+            <!-- Area -->
+            <div class="mt-4">
+                <label for="area_ha" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Area (ha) <span class="text-red-600">*</span>
+                </label>
+                <input id="area_ha" type="number" name="area_ha" step="0.001" min="0.01" required
+                       value="{{if .AreaHA}}{{.AreaHA}}{{else}}{{.Block.AreaHA}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Vine count -->
+            <div class="mt-4">
+                <label for="vine_count" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Vinstockar
+                </label>
+                <input id="vine_count" type="number" name="vine_count" min="0"
+                       value="{{if .VineCount}}{{.VineCount}}{{else}}{{if .Block.VineCount}}{{.Block.VineCount}}{{end}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Planting year -->
+            <div class="mt-4">
+                <label for="planting_year" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Planteringsår
+                </label>
+                <input id="planting_year" type="number" name="planting_year" min="1800" max="2030"
+                       value="{{if .PlantingYear}}{{.PlantingYear}}{{else}}{{if .Block.PlantingYear}}{{.Block.PlantingYear}}{{end}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Training system -->
+            <div class="mt-4">
+                <label for="training_system" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Uppbindningssystem
+                </label>
+                <input id="training_system" type="text" name="training_system"
+                       value="{{if .TrainingSystem}}{{.TrainingSystem}}{{else}}{{if .Block.TrainingSystem}}{{.Block.TrainingSystem}}{{end}}{{end}}"
+                       placeholder="T.ex. VSP, GDC"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Aspect -->
+            <div class="mt-4">
+                <label for="aspect" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Exposition
+                </label>
+                <select id="aspect" name="aspect"
+                        class="w-full px-3 py-2 border border-gray-300 rounded text-base">
+                    <option value="">Välj exposition</option>
+                    <option value="N" {{if eq .Aspect "N"}}selected{{end}}>N</option>
+                    <option value="NE" {{if eq .Aspect "NE"}}selected{{end}}>NE</option>
+                    <option value="E" {{if eq .Aspect "E"}}selected{{end}}>E</option>
+                    <option value="SE" {{if eq .Aspect "SE"}}selected{{end}}>SE</option>
+                    <option value="S" {{if eq .Aspect "S"}}selected{{end}}>S</option>
+                    <option value="SW" {{if eq .Aspect "SW"}}selected{{end}}>SW</option>
+                    <option value="W" {{if eq .Aspect "W"}}selected{{end}}>W</option>
+                    <option value="NW" {{if eq .Aspect "NW"}}selected{{end}}>NW</option>
+                </select>
+            </div>
+
+            <!-- Slope degrees -->
+            <div class="mt-4">
+                <label for="slope_degrees" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Sluttning (grader)
+                </label>
+                <input id="slope_degrees" type="number" name="slope_degrees" step="0.1" min="0" max="90"
+                       value="{{if .SlopeDegrees}}{{.SlopeDegrees}}{{else}}{{if .Block.SlopeDegrees}}{{.Block.SlopeDegrees}}{{end}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+
+            <!-- Elevation -->
+            <div class="mt-4">
+                <label for="elevation_m" class="block mb-1 text-sm font-semibold text-gray-700">
+                    Höjmö (m)
+                </label>
+                <input id="elevation_m" type="number" name="elevation_m" min="0"
+                       value="{{if .ElevationM}}{{.ElevationM}}{{else}}{{if .Block.ElevationM}}{{.Block.ElevationM}}{{end}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded text-base" />
+            </div>
+        </fieldset>
+
+        <!-- Submit button -->
+        <div class="pt-4">
+            <button type="submit"
+                    class="submit-btn w-full px-4 py-3 bg-[#2d6a2d] text-white rounded text-base font-semibold hover:bg-green-800 no-underline cursor-pointer">
+                <span class="hx-loading-hidden">Spara ändringar</span>
+                <span class="hx-loading">Sparar...</span>
+            </button>
+        </div>
+    </form>
+</main>
+{{end}}
+
+{{define "scripts"}}
+<script>
+function varietySearch() {
+    return {
+        searchQuery: '',
+        searchResults: [],
+        selectedVarietyId: null,
+        customVarietyName: '',
+        searching: false,
+        searchError: '',
+        highConfidence: false,
+
+        async search() {
+            const q = this.searchQuery;
+            if (!q || q.length < 2) {
+                this.searchResults = [];
+                this.highConfidence = false;
+                return;
+            }
+            this.searching = true;
+            this.searchError = '';
+
+            try {
+                const res = await fetch(`/api/varieties/search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                this.searchResults = data.matches;
+                this.highConfidence = data.high_confidence;
+
+                if (data.high_confidence && data.matches.length > 0) {
+                    this.select(data.matches[0].id, data.matches[0].name);
+                }
+            } catch (e) {
+                this.searchError = 'Sökningen misslyckades.';
+                this.searchResults = [];
+            } finally {
+                this.searching = false;
+            }
+        },
+
+        select(id, name) {
+            this.selectedVarietyId = id;
+            this.searchQuery = name;
+            this.searchResults = [];
+            this.highConfidence = false;
+        },
+
+        useCustom() {
+            this.selectedVarietyId = null;
+            this.customVarietyName = this.searchResults[0]?.name ?? '';
+            this.searchResults = [];
+            this.highConfidence = false;
+        }
+    };
+}
+</script>
+{{end}}

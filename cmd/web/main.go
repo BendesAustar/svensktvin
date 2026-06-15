@@ -18,6 +18,7 @@ import (
 	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 	"github.com/svensktvin/svensktvin/internal/email"
+	"github.com/svensktvin/svensktvin/internal/handlers/api"
 	"github.com/svensktvin/svensktvin/internal/handlers/pages"
 )
 
@@ -59,6 +60,10 @@ func main() {
 
 	// Initialize vineyard handlers
 	vineyardHandler := pages.NewVineyardHandler(store, sessionMgr)
+
+	// Initialize API handlers
+	varietySearchHandler := api.NewVarietySearchHandler(store)
+	geoReverseHandler := api.NewGeoReverseHandler()
 
 	// Generate session secret (or load from config)
 	sessionSecret := cfg.SessionSecret
@@ -108,10 +113,8 @@ func main() {
 	})
 
 	// API routes (for HTMX/Alpine JSON endpoints)
-	mux.HandleFunc("GET /api/varieties/search", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"query":"","matches":[],"high_confidence":false}`)
-	})
+	mux.HandleFunc("GET /api/varieties/search", varietySearchHandler.HandleGET)
+	mux.HandleFunc("POST /api/geo/reverse", geoReverseHandler.HandlePOST)
 
 	// Create server
 	server := &http.Server{

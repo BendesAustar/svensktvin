@@ -666,3 +666,73 @@ func (s *Store) GetBenchmarkData(ctx context.Context, vineyardID int64) Benchmar
 
 	return result
 }
+
+// UpdateBlock updates an existing block record.
+func (s *Store) UpdateBlock(ctx context.Context, blockID, vineyardID int64,
+	blockName string, varietyID int64, areaHA float64,
+	vineCount *int, plantingYear *int,
+	trainingSystem, aspect *string,
+	slopeDegrees *float64, elevationM *int) error {
+
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE blocks SET
+			block_name = $1,
+			variety_id = $2,
+			area_ha = $3,
+			vine_count = $4,
+			planting_year = $5,
+			training_system = $6,
+			aspect = $7,
+			slope_degrees = $8,
+			elevation_m = $9,
+			updated_at = now()
+		WHERE id = $10 AND vineyard_id = $11 AND deleted_at IS NULL
+	`, blockName, varietyID, areaHA,
+		vineCount, plantingYear, trainingSystem, aspect,
+		slopeDegrees, elevationM,
+		blockID, vineyardID)
+
+	if err != nil {
+		return fmt.Errorf("update block: %w", err)
+	}
+	return nil
+}
+
+// CreateVariety creates a new variety with review_needed status.
+func (s *Store) CreateVariety(ctx context.Context, name string, vineyardID, userID int64) (int64, error) {
+	var varietyID int64
+	err := s.Pool.QueryRow(ctx, `
+		INSERT INTO varieties (name, piwi, color, status, submitted_by_vineyard_id)
+		VALUES ($1, false, 'other', 'review_needed', $2)
+		RETURNING id
+	`, name, vineyardID).Scan(&varietyID)
+
+	if err != nil {
+		return 0, fmt.Errorf("create variety: %w", err)
+	}
+	return varietyID, nil
+}
+
+// CreateOrLookupVariety looks up an existing variety by name (case-insensitive),
+// or creates a new one with review_needed status if not found.
+func (s *Store) CreateOrLookupVariety(ctx context.Context, name string, vineyardID, userID int64) (int64, error) {
+	var varietyID int64
+
+	// Try to find existing variety (case-insensitive)
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id FROM varieties WHERE LOWER(name) = LOWER($1)
+	`, name).Scan(&varietyID)
+
+	if err != nil {
+		if err != pgx.ErrNoRows {
+			return 0, fmt.Errorf("lookup variety: %w", err)
+		}
+		// Not found — create new variety
+		varietyID, err = s.CreateVariety(ctx, name, vineyardID, userID)
+		if err != nil {
+			return 0, fmt.Errorf("create variety: %w", err)
+		}
+	}
+
+	return varietyID, nil
+}

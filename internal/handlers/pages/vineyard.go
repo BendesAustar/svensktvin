@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
 	"github.com/svensktvin/svensktvin/internal/db"
@@ -80,9 +81,19 @@ func (h *VineyardHandler) HandleLandingGET(tmpl *template.Template) http.Handler
 	}
 }
 
-// HandleVineyardGET renders the vineyard dashboard.
+// HandleVineyardGET renders the vineyard dashboard (or delegates to block handlers).
 func (h *VineyardHandler) HandleVineyardGET(tmpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Check if this is a block route — delegate to BlockHandler
+		if strings.HasPrefix(path, "/vineyard/") && strings.Contains(path, "/blocks/") {
+			// Create a temporary BlockHandler and delegate
+			blockHandler := NewBlockHandler(h.store, h.sessionMgr)
+			blockHandler.routeBlockRequest(tmpl).ServeHTTP(w, r)
+			return
+		}
+
 		// Auth check
 		user := h.sessionMgr.SessionFromRequest(r)
 		if user == nil {
@@ -91,7 +102,6 @@ func (h *VineyardHandler) HandleVineyardGET(tmpl *template.Template) http.Handle
 		}
 
 		// Extract vineyard ID from path: /vineyard/{id}
-		path := r.URL.Path
 		var vineyardID int64
 		_, err := fmt.Sscanf(path, "/vineyard/%d", &vineyardID)
 		if err != nil || vineyardID == 0 {
