@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -36,15 +37,17 @@ func getUserFromContext(ctx context.Context) (UserInfo, bool) {
 
 // SessionManager handles session creation and validation.
 type SessionManager struct {
-	store     *db.Store
+	store        *db.Store
 	sessionExpiry time.Duration
+	cookieCfg    config.CookieConfig
 }
 
 // NewSessionManager creates a new session manager.
-func NewSessionManager(store *db.Store, sessionExpiry time.Duration) *SessionManager {
+func NewSessionManager(store *db.Store, sessionExpiry time.Duration, cookieCfg config.CookieConfig) *SessionManager {
 	return &SessionManager{
 		store:       store,
 		sessionExpiry: sessionExpiry,
+		cookieCfg:    cookieCfg,
 	}
 }
 
@@ -154,8 +157,8 @@ func (sm *SessionManager) SetSessionCookie(w http.ResponseWriter, sessionID stri
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true, // Set to false in dev if needed
-		SameSite: http.SameSiteLaxMode,
+		Secure:   sm.cookieCfg.Secure,
+		SameSite: sameSite(sm.cookieCfg.SameSite),
 		Expires:  time.Now().Add(sm.sessionExpiry),
 	})
 }
@@ -167,8 +170,22 @@ func (sm *SessionManager) ClearSessionCookie(w http.ResponseWriter) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   sm.cookieCfg.Secure,
+		SameSite: sameSite(sm.cookieCfg.SameSite),
 		Expires:  time.Now().Add(-24 * time.Hour), // Expired
 	})
+}
+
+// sameSite converts a string to http.SameSite mode.
+func sameSite(mode string) http.SameSite {
+	switch mode {
+	case "Strict":
+		return http.SameSiteStrictMode
+	case "Lax":
+		return http.SameSiteLaxMode
+	case "None":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }

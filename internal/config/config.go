@@ -20,15 +20,16 @@ type SMTPConfig struct {
 
 // Config holds all application configuration.
 type Config struct {
-	Port    int           `yaml:"port"`
-	API     APIConfig     `yaml:"api"`
-	Database DatabaseConfig `yaml:"database"`
-	Auth    AuthConfig     `yaml:"auth"`
-	RateLimit RateLimitConfig `yaml:"rate_limit"`
-	SessionSecret string      `yaml:"session_secret"`
-	SMTP    SMTPConfig    `yaml:"smtp"`
-	AppHost string        `yaml:"app_host"`
-	TemplateMode string     `yaml:"template_mode"` // "dev" (CDN) or "prod" (prebuilt)
+	Port          int            `yaml:"port"`
+	API           APIConfig      `yaml:"api"`
+	Database      DatabaseConfig `yaml:"database"`
+	Auth          AuthConfig     `yaml:"auth"`
+	RateLimit     RateLimitConfig `yaml:"rate_limit"`
+	SessionSecret string         `yaml:"session_secret"`
+	SMTP          SMTPConfig     `yaml:"smtp"`
+	AppHost       string         `yaml:"app_host"`
+	TemplateMode  string         `yaml:"template_mode"` // "dev" (CDN) or "prod" (prebuilt)
+	Cookie        CookieConfig   `yaml:"cookie"`
 }
 
 // APIConfig holds HTTP server settings.
@@ -50,6 +51,32 @@ type AuthConfig struct {
 type RateLimitConfig struct {
 	AuthRequests int           `yaml:"auth_requests"`
 	AuthWindow   time.Duration `yaml:"auth_window"`
+}
+
+// CookieConfig holds cookie security settings.
+type CookieConfig struct {
+	Secure   bool   `yaml:"secure"`
+	SameSite string `yaml:"same_site"` // "Strict", "Lax", "None"
+}
+
+// ResolveCookie returns the resolved cookie configuration.
+// APP_ENV overrides YAML for the Secure flag:
+//   - APP_ENV=development → Secure: false
+//   - APP_ENV=production  → Secure: true
+//   - No APP_ENV set      → Secure: false (safe for localhost dev)
+func (c *Config) ResolveCookie() CookieConfig {
+	cfg := c.Cookie
+	if cfg.SameSite == "" {
+		cfg.SameSite = "Lax"
+	}
+	switch os.Getenv("APP_ENV") {
+	case "development":
+		cfg.Secure = false
+	case "production":
+		cfg.Secure = true
+	// default: Secure stays false for safe localhost dev
+	}
+	return cfg
 }
 
 // Load reads configuration from a YAML file and falls back to environment variables.
@@ -75,6 +102,7 @@ func Load(path string) (*Config, error) {
 				Port: 587,
 			},
 			TemplateMode: "dev",
+			Cookie:       CookieConfig{Secure: false, SameSite: "Lax"},
 		}
 		return &cfg, nil
 	}

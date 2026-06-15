@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -19,13 +20,15 @@ import (
 type HarvestHandler struct {
 	store      *db.Store
 	sessionMgr *auth.SessionManager
+	cookieCfg  config.CookieConfig
 }
 
 // NewHarvestHandler creates a new harvest handler.
-func NewHarvestHandler(store *db.Store, sessionMgr *auth.SessionManager) *HarvestHandler {
+func NewHarvestHandler(store *db.Store, sessionMgr *auth.SessionManager, cookieCfg config.CookieConfig) *HarvestHandler {
 	return &HarvestHandler{
 		store:      store,
 		sessionMgr: sessionMgr,
+		cookieCfg:  cookieCfg,
 	}
 }
 
@@ -33,13 +36,15 @@ func NewHarvestHandler(store *db.Store, sessionMgr *auth.SessionManager) *Harves
 type HarvestLockHandler struct {
 	store      *db.Store
 	sessionMgr *auth.SessionManager
+	cookieCfg  config.CookieConfig
 }
 
 // NewHarvestLockHandler creates a new block lock handler.
-func NewHarvestLockHandler(store *db.Store, sessionMgr *auth.SessionManager) *HarvestLockHandler {
+func NewHarvestLockHandler(store *db.Store, sessionMgr *auth.SessionManager, cookieCfg config.CookieConfig) *HarvestLockHandler {
 	return &HarvestLockHandler{
 		store:      store,
 		sessionMgr: sessionMgr,
+		cookieCfg:  cookieCfg,
 	}
 }
 
@@ -149,7 +154,7 @@ func (h *HarvestHandler) handleHarvestNewGET(tmpl *template.Template) http.Handl
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		var lockJSON string
 		if lock != nil {
@@ -430,7 +435,7 @@ func (h *HarvestHandler) handleHarvestEditGET(tmpl *template.Template) http.Hand
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
 			"User":        user,

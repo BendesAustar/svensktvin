@@ -42,7 +42,7 @@ func main() {
 	defer store.Close()
 
 	// Initialize auth components
-	sessionMgr := auth.NewSessionManager(store, cfg.Auth.SessionExpiry)
+	sessionMgr := auth.NewSessionManager(store, cfg.Auth.SessionExpiry, cfg.Cookie)
 	magicLinkMgr := auth.NewMagicLinkManager(store)
 	rateLimiter := auth.NewRateLimiter(cfg.RateLimit.AuthRequests, cfg.RateLimit.AuthWindow)
 
@@ -59,14 +59,14 @@ func main() {
 	authHandler := pages.NewAuthHandler(store, sessionMgr, magicLinkMgr, rateLimiter, cfg, emailSender)
 
 	// Initialize vineyard handlers
-	vineyardHandler := pages.NewVineyardHandler(store, sessionMgr)
+	vineyardHandler := pages.NewVineyardHandler(store, sessionMgr, cfg.Cookie)
 
 	// Initialize harvest handlers
-	harvestHandler := pages.NewHarvestHandler(store, sessionMgr)
-	harvestLockHandler := pages.NewHarvestLockHandler(store, sessionMgr)
+	harvestHandler := pages.NewHarvestHandler(store, sessionMgr, cfg.Cookie)
+	harvestLockHandler := pages.NewHarvestLockHandler(store, sessionMgr, cfg.Cookie)
 
 	// Initialize account API handlers
-	accountHandler := api.NewAccountHandler(store, sessionMgr)
+	accountHandler := api.NewAccountHandler(store, sessionMgr, cfg.Cookie)
 
 	// Initialize API handlers
 	varietySearchHandler := api.NewVarietySearchHandler(store)

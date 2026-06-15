@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -16,13 +17,15 @@ import (
 type AccountHandler struct {
 	store      *db.Store
 	sessionMgr *auth.SessionManager
+	cookieCfg  config.CookieConfig
 }
 
 // NewAccountHandler creates a new account handler.
-func NewAccountHandler(store *db.Store, sessionMgr *auth.SessionManager) *AccountHandler {
+func NewAccountHandler(store *db.Store, sessionMgr *auth.SessionManager, cookieCfg config.CookieConfig) *AccountHandler {
 	return &AccountHandler{
 		store:      store,
 		sessionMgr: sessionMgr,
+		cookieCfg:  cookieCfg,
 	}
 }
 
@@ -83,9 +86,23 @@ func (h *AccountHandler) HandleAccountDeletePOST(w http.ResponseWriter, r *http.
 		Value:    "Ditt konto har raderats.",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   h.cookieCfg.Secure,
+		SameSite: sameSite(h.cookieCfg.SameSite),
 	})
 
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// sameSite converts a string to http.SameSite mode.
+func sameSite(mode string) http.SameSite {
+	switch mode {
+	case "Strict":
+		return http.SameSiteStrictMode
+	case "Lax":
+		return http.SameSiteLaxMode
+	case "None":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }

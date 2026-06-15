@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -17,13 +18,15 @@ import (
 type VineyardHandler struct {
 	store      *db.Store
 	sessionMgr *auth.SessionManager
+	cookieCfg  config.CookieConfig
 }
 
 // NewVineyardHandler creates a new vineyard handler.
-func NewVineyardHandler(store *db.Store, sessionMgr *auth.SessionManager) *VineyardHandler {
+func NewVineyardHandler(store *db.Store, sessionMgr *auth.SessionManager, cookieCfg config.CookieConfig) *VineyardHandler {
 	return &VineyardHandler{
 		store:      store,
 		sessionMgr: sessionMgr,
+		cookieCfg:  cookieCfg,
 	}
 }
 
@@ -89,7 +92,7 @@ func (h *VineyardHandler) HandleVineyardGET(tmpl *template.Template) http.Handle
 		// Check if this is a block route — delegate to BlockHandler
 		if strings.HasPrefix(path, "/vineyard/") && strings.Contains(path, "/blocks/") {
 			// Create a temporary BlockHandler and delegate
-			blockHandler := NewBlockHandler(h.store, h.sessionMgr)
+			blockHandler := NewBlockHandler(h.store, h.sessionMgr, h.cookieCfg)
 			blockHandler.routeBlockRequest(tmpl).ServeHTTP(w, r)
 			return
 		}
@@ -139,7 +142,7 @@ func (h *VineyardHandler) HandleVineyardGET(tmpl *template.Template) http.Handle
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
 			"User":            user,
@@ -192,7 +195,7 @@ func (h *VineyardHandler) HandleBenchmarkGET(tmpl *template.Template) http.Handl
 		benchData := h.store.GetBenchmarkData(r.Context(), vineyardID)
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
 			"User":            user,

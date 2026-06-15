@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -17,13 +18,15 @@ import (
 type BlockHandler struct {
 	store      *db.Store
 	sessionMgr *auth.SessionManager
+	cookieCfg  config.CookieConfig
 }
 
 // NewBlockHandler creates a new block handler.
-func NewBlockHandler(store *db.Store, sessionMgr *auth.SessionManager) *BlockHandler {
+func NewBlockHandler(store *db.Store, sessionMgr *auth.SessionManager, cookieCfg config.CookieConfig) *BlockHandler {
 	return &BlockHandler{
 		store:      store,
 		sessionMgr: sessionMgr,
+		cookieCfg:  cookieCfg,
 	}
 }
 
@@ -97,7 +100,7 @@ func (h *BlockHandler) handleBlockNewGET(tmpl *template.Template) http.HandlerFu
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
 			"User":     user,
@@ -293,7 +296,7 @@ func (h *BlockHandler) handleBlockEditGET(tmpl *template.Template) http.HandlerF
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
 
 		data := map[string]any{
 			"User":           user,

@@ -54,14 +54,14 @@ func validateCSRFToken(r *http.Request) bool {
 }
 
 // setCSRFCookie sets the CSRF token cookie.
-func setCSRFCookie(w http.ResponseWriter, token string) {
+func setCSRFCookie(w http.ResponseWriter, token string, cookieCfg config.CookieConfig) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   cookieCfg.Secure,
+		SameSite: sameSite(cookieCfg.SameSite),
 	})
 }
 
@@ -118,7 +118,7 @@ func (h *AuthHandler) HandleLoginGET(tmpl *template.Template) http.HandlerFunc {
 
 		// Generate CSRF token
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cfg.Cookie)
 
 		// Parse invite token from query
 		inviteToken := r.URL.Query().Get("invite")
@@ -301,7 +301,7 @@ func (h *AuthHandler) HandleRegisterGET(tmpl *template.Template) http.HandlerFun
 		vineyardName, _ := h.store.GetVineyardName(r.Context(), invite.VineyardID)
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cfg.Cookie)
 
 		data := map[string]any{
 			"CSRFToken":    csrfToken,
@@ -430,7 +430,7 @@ func (h *AuthHandler) HandleRegisterPOST(tmpl *template.Template) http.HandlerFu
 func (h *AuthHandler) HandleForgotPasswordGET(tmpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cfg.Cookie)
 
 		data := map[string]any{
 			"CSRFToken": csrfToken,
@@ -523,7 +523,7 @@ func (h *AuthHandler) HandleSetPasswordGET(tmpl *template.Template) http.Handler
 		}
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cfg.Cookie)
 
 		data := map[string]any{
 			"CSRFToken": csrfToken,
@@ -639,7 +639,7 @@ func (h *AuthHandler) HandleInviteConfirmGET(tmpl *template.Template) http.Handl
 		user := h.sessionMgr.SessionFromRequest(r)
 
 		csrfToken := generateCSRFToken()
-		setCSRFCookie(w, csrfToken)
+		setCSRFCookie(w, csrfToken, h.cfg.Cookie)
 
 		data := map[string]any{
 			"CSRFToken":    csrfToken,
@@ -712,5 +712,19 @@ func (h *AuthHandler) HandleInviteConfirmPOST(tmpl *template.Template) http.Hand
 		// HX-Redirect: HTMX SPA-like navigation to vineyard
 		w.Header().Set("HX-Redirect", fmt.Sprintf("/vineyard/%d", invite.VineyardID))
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// sameSite converts a string to http.SameSite mode.
+func sameSite(mode string) http.SameSite {
+	switch mode {
+	case "Strict":
+		return http.SameSiteStrictMode
+	case "Lax":
+		return http.SameSiteLaxMode
+	case "None":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
 	}
 }
