@@ -94,6 +94,9 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","version":"1.0.0","database":"connected"}`)
 	})
 
+	// Root route → vineyard landing (home page)
+	mux.HandleFunc("GET /", vineyardHandler.HandleLandingGET(templates))
+
 	// Auth routes (public, rate-limited)
 	mux.HandleFunc("GET /login", authHandler.HandleLoginGET(templates))
 	mux.HandleFunc("POST /login", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleLoginPOST(templates)))
@@ -120,11 +123,7 @@ func main() {
 	mux.HandleFunc("POST /account/delete", accountHandler.HandleAccountDeletePOST)
 
 	// Static files
-	staticDir := "static"
-	staticFS := http.Dir(staticDir)
-	mux.HandleFunc("GET /static/", func(w http.ResponseWriter, r *http.Request) {
-		http.FileServer(staticFS).ServeHTTP(w, r)
-	})
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// API routes (for HTMX/Alpine JSON endpoints)
 	mux.HandleFunc("GET /api/varieties/search", varietySearchHandler.HandleGET)

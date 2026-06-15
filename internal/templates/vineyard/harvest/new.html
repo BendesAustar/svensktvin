@@ -1,10 +1,48 @@
-{{template "base.html" .}}
+{{define "vineyard/harvest/new.html"}}
+<!DOCTYPE html>
+<html lang="sv" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}{{.Title}}{{end}}</title>
 
-{{define "title"}}{{.Title}}{{end}}
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfMzorYmKGrM1lGbI0i6YcfnBDWTRfz94B0nTDnO2UcBZcDR40XyXGNq"
+            crossorigin="anonymous"></script>
 
-{{define "content"}}
-<main class="max-w-2xl mx-auto mt-12 px-4">
-    <!-- Back link -->
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/app.css">
+
+    {{block "head" .}}{{end}}
+</head>
+<body class="min-h-full bg-gray-50 font-sans text-gray-900">
+
+    {{if .User}}
+    <!-- Logged-in navigation -->
+    {{template "nav" .}}
+    {{else}}
+    <!-- Logged-out header -->
+    <header class="bg-gray-100 border-b border-gray-300">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
+            <a href="/" class="no-underline font-semibold text-lg text-[#2d6a2d]">🍷 Svenskt Vin</a>
+            <div class="flex gap-4">
+                <a href="/login" class="text-sm text-gray-500 hover:text-gray-700 no-underline">Logga in</a>
+                <a href="/register" class="text-sm text-gray-500 hover:text-gray-700 no-underline">Skapa konto</a>
+            </div>
+        </div>
+    </header>
+    {{end}}
+
+    <main class="max-w-7xl mx-auto px-4">
+        {{template "flash" .}}
+
+<!-- Back link -->
     <div class="mb-4">
         <a href="/vineyard/{{.Vineyard.ID}}" class="text-gray-500 text-sm no-underline hover:text-[#2d6a2d]">
             ← Tillbaka till {{.Vineyard.Name}}
@@ -236,47 +274,29 @@
             </button>
         </div>
     </form>
-</main>
-{{end}}
+    </main>
 
-{{define "scripts"}}
-<script>
-// Countdown timer for block lock
-(function() {
-    const lockEl = document.getElementById('lock-data');
-    if (!lockEl) return;
+    <!-- Cookie consent bar -->
+    {{if not .User}}
+    <div x-data="{ shown: !localStorage.getItem('cookie_consent') }"
+         x-show="shown"
+         x-init="$watch('shown', val => { if (!val) localStorage.setItem('cookie_consent', '1') })"
+         class="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 z-50 flex justify-between items-center flex-wrap gap-3 text-sm">
+        <div class="flex-1 min-w-48">
+            <strong class="mr-2">Cookies</strong>
+            Svenskt Vin använder endast nödvändiga sessionscookies för inloggning.
+            Ingen spårning eller tredjepartscookie.
+            <a href="/privacy" class="text-green-300 ml-1 underline">Läs mer</a>.
+        </div>
+        <button @click="shown = false"
+                class="px-4 py-2 bg-[#2d6a2d] text-white border-none rounded text-sm cursor-pointer font-semibold">
+            Acceptera
+        </button>
+    </div>
+    {{end}}
 
-    const lockData = JSON.parse(lockEl.textContent);
-    const expiresAt = new Date(lockData.expires_at);
+    {{block "scripts" .}}{{end}}
+</body>
+</html>
 
-    function updateCountdown() {
-        const now = new Date();
-        const diff = expiresAt - now;
-
-        if (diff <= 0) {
-            document.getElementById('countdown').textContent = '00:00';
-            setTimeout(() => location.reload(), 1000);
-            return;
-        }
-
-        const minutes = Math.floor(diff / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-        document.getElementById('countdown').textContent =
-            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-
-        if (diff < 60000) {
-            document.getElementById('countdown').classList.add('text-red-600');
-        }
-    }
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-
-    // Listen for lock-extended HTMX trigger to reset timer
-    document.addEventListener('lock-extended', () => {
-        clearInterval(timer);
-        location.reload();
-    });
-})();
-</script>
 {{end}}

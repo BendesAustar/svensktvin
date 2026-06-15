@@ -62,7 +62,7 @@ func Load(path string) (*Config, error) {
 		cfg = Config{
 			Port:    envInt("PORT", 8080),
 			Database: DatabaseConfig{
-				URL: envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin"),
+				URL: envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5432/svensktvin"),
 			},
 			Auth: AuthConfig{
 				SessionExpiry: 30 * 24 * time.Hour,
@@ -88,7 +88,7 @@ func Load(path string) (*Config, error) {
 		cfg.Port = envInt("PORT", 8080)
 	}
 	if cfg.Database.URL == "" {
-		cfg.Database.URL = envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5434/svensktvin")
+		cfg.Database.URL = envOr("DATABASE_URL", "postgres://sv_app:sv_dev_pass@localhost:5432/svensktvin")
 	}
 	if cfg.Auth.SessionExpiry == 0 {
 		cfg.Auth.SessionExpiry = 30 * 24 * time.Hour

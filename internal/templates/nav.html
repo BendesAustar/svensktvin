@@ -1,6 +1,7 @@
 {{define "nav"}}
 <nav class="max-w-7xl mx-auto px-4 py-2 border-b border-gray-300 bg-white flex justify-between items-center">
     <div class="flex gap-1 items-center">
+        {{if .Vineyard.ID}}
         <a href="/vineyard/{{.Vineyard.ID}}"
            class="text-gray-500 text-sm no-underline px-3 py-2 rounded {{if .IsHome}}text-[#2d6a2d] bg-green-50 font-medium{{else}}hover:bg-gray-100{{end}}">
             ← {{.Vineyard.Name}}
@@ -13,14 +14,19 @@
            class="text-gray-500 text-sm no-underline px-3 py-2 rounded {{if .IsBenchmark}}text-[#2d6a2d] bg-green-50 font-medium{{else}}hover:bg-gray-100{{end}}">
             📊 Jämförelse
         </a>
+        {{end}}
     </div>
+    {{if .Role}}
     {{if eq .Role "owner"}}
     <div class="flex gap-1 items-center">
+        {{if .Vineyard.ID}}
         <a href="/vineyard/{{.Vineyard.ID}}/settings"
            class="text-gray-500 text-sm no-underline px-3 py-2 rounded {{if .IsSettings}}text-[#2d6a2d] bg-green-50 font-medium{{else}}hover:bg-gray-100{{end}}">
             ⚙️
         </a>
+        {{end}}
     </div>
+    {{end}}
     {{end}}
 </nav>
 {{end}}
