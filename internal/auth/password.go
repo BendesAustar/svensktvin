@@ -65,8 +65,8 @@ func PasswordStrength(password string) (bool, []string) {
 	return len(errors) == 0, errors
 }
 
-// randomHex generates a hex-encoded random string of n bytes.
-func randomHex(n int) string {
+// RandomHex generates a hex-encoded random string of n bytes.
+func RandomHex(n int) string {
 	b := make([]byte, n)
 	rand.Read(b)
 	return hex.EncodeToString(b)

@@ -374,3 +374,66 @@ func (s *Store) GetUserInfo(ctx context.Context, userID int64) (*User, error) {
 	}
 	return &u, nil
 }
+
+// GetPendingInvite retrieves a pending invite by token.
+func (s *Store) GetPendingInvite(ctx context.Context, token string) (*PendingInvite, error) {
+	var pi PendingInvite
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, email, vineyard_id, role, expires_at
+		FROM pending_invites
+		WHERE token = $1 AND used = false AND expires_at > now()
+	`, token).Scan(&pi.ID, &pi.Email, &pi.VineyardID, &pi.Role, &pi.ExpiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("get pending invite: %w", err)
+	}
+	return &pi, nil
+}
+
+// UpdatePendingInviteUsed marks a pending invite as used.
+func (s *Store) UpdatePendingInviteUsed(ctx context.Context, inviteID int64) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE pending_invites SET used = true WHERE id = $1
+	`, inviteID)
+	if err != nil {
+		return fmt.Errorf("update pending invite used: %w", err)
+	}
+	return nil
+}
+
+// GetVineyardName retrieves a vineyard's name by ID.
+func (s *Store) GetVineyardName(ctx context.Context, vineyardID int64) (string, error) {
+	var name string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT name FROM vineyards WHERE id = $1 AND deleted_at IS NULL
+	`, vineyardID).Scan(&name)
+	if err != nil {
+		return "", fmt.Errorf("get vineyard name: %w", err)
+	}
+	return name, nil
+}
+
+// DeleteSessionsByUser invalidates all sessions for a user.
+func (s *Store) DeleteSessionsByUser(ctx context.Context, userID int64) error {
+	_, err := s.Pool.Exec(ctx, `
+		DELETE FROM sessions WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
+	}
+	return nil
+}
+
+// UpsertUser creates or updates a user by email (for enumeration-safe forgot password).
+func (s *Store) UpsertUser(ctx context.Context, email string) (int64, error) {
+	var userID int64
+	err := s.Pool.QueryRow(ctx, `
+		INSERT INTO users (email, name, active)
+		VALUES ($1, split_part($1, '@', 1), true)
+		ON CONFLICT (email) DO UPDATE SET active = true
+		RETURNING id
+	`, email).Scan(&userID)
+	if err != nil {
+		return 0, fmt.Errorf("upsert user: %w", err)
+	}
+	return userID, nil
+}

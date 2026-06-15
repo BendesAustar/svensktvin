@@ -24,7 +24,7 @@ func NewMagicLinkManager(store *db.Store) *MagicLinkManager {
 // GenerateToken creates a magic link token for a user.
 func (m *MagicLinkManager) GenerateToken(ctx context.Context, userID int64) (string, error) {
 	// Generate raw token and hash
-	rawToken := randomHex(32)
+	rawToken := RandomHex(32)
 	hash := sha256.Sum256([]byte(rawToken))
 
 	// Upsert user (idempotent)
@@ -76,7 +76,7 @@ func (m *MagicLinkManager) VerifyToken(ctx context.Context, rawToken string) (in
 // SendMagicLink sends a magic link email for the given email address.
 func (m *MagicLinkManager) SendMagicLink(ctx context.Context, email string) error {
 	// Generate token
-	rawToken := randomHex(32)
+	rawToken := RandomHex(32)
 	hash := sha256.Sum256([]byte(rawToken))
 
 	// Upsert user (idempotent: creates new user if doesn't exist)

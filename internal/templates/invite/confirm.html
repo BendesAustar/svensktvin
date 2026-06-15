@@ -1,0 +1,48 @@
+{{define "invite/confirm.html"}}
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceptera inbjudan — Svenskt Vin</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-gray-50 font-sans text-gray-900">
+    <main class="max-w-md mx-auto mt-24 px-4">
+        <h1 class="text-2xl mb-2">Svenskt Vin</h1>
+
+        {{if .Error}}
+        <div class="bg-red-100 p-4 rounded mb-4">
+            <p class="m-0 text-red-700">{{.Error}}</p>
+        </div>
+        <a href="/login" class="text-[#2d6a2d] text-sm">← Tillbaka till inloggning</a>
+
+        {{else}}
+        <div class="bg-green-50 p-4 rounded mb-4 border-l-4 border-green-600">
+            <p class="m-0 mb-2">Du har blivit inbjuden att gå med i</p>
+            <p class="text-xl font-semibold">{{.VineyardName}}</p>
+            <p class="text-sm text-gray-500">Roll: {{.Role}}</p>
+        </div>
+
+        <p class="text-gray-500 mb-6">
+            Som inloggad som <strong>{{.Email}}</strong>, vill du acceptera inbjudan?
+        </p>
+
+        <form method="POST" hx-post="/invite/confirm" hx-swap="outerHTML">
+            <input type="hidden" name="invite_token" value="{{.InviteToken}}" />
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+            <button type="submit"
+                    class="w-full p-3 bg-[#2d6a2d] text-white border-none rounded text-lg cursor-pointer">
+                Acceptera inbjudan
+            </button>
+        </form>
+
+        <p class="mt-4 text-center">
+            <a href="/login" class="text-[#2d6a2d] text-sm">Avbryt och gå tillbaka till inloggning</a>
+        </p>
+        {{end}}
+    </main>
+</body>
+</html>
+{{end}}

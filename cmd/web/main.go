@@ -3,20 +3,20 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"text/template"
 	"time"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
 	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
+	"github.com/svensktvin/svensktvin/internal/email"
+	"github.com/svensktvin/svensktvin/internal/handlers/pages"
 )
 
 func main() {
@@ -39,15 +39,26 @@ func main() {
 	defer store.Close()
 
 	// Initialize auth components
-	_ = auth.NewSessionManager(store, cfg.Auth.SessionExpiry) // P2+: used in handler stubs
-	_ = auth.NewMagicLinkManager(store)                        // P2+: used in handler stubs
+	sessionMgr := auth.NewSessionManager(store, cfg.Auth.SessionExpiry)
+	magicLinkMgr := auth.NewMagicLinkManager(store)
 	rateLimiter := auth.NewRateLimiter(cfg.RateLimit.AuthRequests, cfg.RateLimit.AuthWindow)
+
+	// Initialize email sender
+	emailSender := email.NewSender(email.Config{
+		Host: cfg.SMTP.Host,
+		Port: cfg.SMTP.Port,
+		User: cfg.SMTP.User,
+		Pass: cfg.SMTP.Pass,
+		From: cfg.SMTP.From,
+	})
+
+	// Initialize auth handlers
+	authHandler := pages.NewAuthHandler(store, sessionMgr, magicLinkMgr, rateLimiter, cfg, emailSender)
 
 	// Generate session secret (or load from config)
 	sessionSecret := cfg.SessionSecret
 	if sessionSecret == "" {
-		sessionSecret = randomHex(64)
-		slog.Warn("svensktvin: no SESSION_SECRET set, generated random")
+		slog.Warn("svensktvin: no SESSION_SECRET set")
 	}
 
 	// Load templates
@@ -67,44 +78,32 @@ func main() {
 	})
 
 	// Auth routes (public, rate-limited)
-	// P1-4 stub: full handler implementations come in Phase 2
-	mux.HandleFunc("POST /login", auth.RateLimitMiddleware(rateLimiter, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		templates.ExecuteTemplate(w, "auth/login.html", map[string]any{"Message": "P1-4 stub: implement Phase 2"})
-	}))
-	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		templates.ExecuteTemplate(w, "auth/login.html", map[string]any{"Message": "P2-6 stub"})
-	})
-	mux.HandleFunc("POST /logout", func(w http.ResponseWriter, r *http.Request) {
-		// Clear session cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    "",
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-			Expires:  time.Now().Add(-24 * time.Hour),
-		})
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	})
-	mux.HandleFunc("GET /register", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		templates.ExecuteTemplate(w, "auth/register.html", map[string]any{"Message": "P2-7 stub"})
-	})
+	mux.HandleFunc("GET /login", authHandler.HandleLoginGET(templates))
+	mux.HandleFunc("POST /login", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleLoginPOST(templates)))
+	mux.HandleFunc("POST /logout", authHandler.HandleLogoutPOST(templates))
+	mux.HandleFunc("GET /register", authHandler.HandleRegisterGET(templates))
+	mux.HandleFunc("POST /register", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleRegisterPOST(templates)))
+	mux.HandleFunc("GET /auth/forgot-password", authHandler.HandleForgotPasswordGET(templates))
+	mux.HandleFunc("POST /auth/forgot-password", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleForgotPasswordPOST(templates)))
+	mux.HandleFunc("GET /auth/set-password", authHandler.HandleSetPasswordGET(templates))
+	mux.HandleFunc("POST /auth/set-password", authHandler.HandleSetPasswordPOST(templates))
+	mux.HandleFunc("GET /invite/confirm", authHandler.HandleInviteConfirmGET(templates))
+	mux.HandleFunc("POST /invite/confirm", auth.RateLimitMiddleware(rateLimiter, authHandler.HandleInviteConfirmPOST(templates)))
 
 	// Vineyard routes (require auth)
-	// P1-4 stub: full handler implementations come in Phase 2-5
 	mux.HandleFunc("GET /vineyard", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	})
-	mux.HandleFunc("GET /vineyard/", func(w http.ResponseWriter, r *http.Request) {
+		user := sessionMgr.SessionFromRequest(r)
+		if user == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		// Redirect to user's first vineyard (simplified for Phase 2)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	})
 
 	// Static files
-	staticFS := http.Dir("static")
+	staticDir := "static"
+	staticFS := http.Dir(staticDir)
 	mux.HandleFunc("GET /static/", func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(staticFS).ServeHTTP(w, r)
 	})
@@ -113,10 +112,6 @@ func main() {
 	mux.HandleFunc("GET /api/varieties/search", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"query":"","matches":[],"high_confidence":false}`)
-	})
-	mux.HandleFunc("GET /api/varieties", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[]`)
 	})
 
 	// Create server
@@ -155,22 +150,32 @@ func main() {
 
 // loadTemplates loads all Go HTML templates from the templates directory.
 func loadTemplates(mode string) (*template.Template, error) {
-	pattern := "templates/**/*.html"
-	if mode == "prod" {
-		pattern = "templates/**/*.html"
+	// Resolve templates directory relative to binary or working directory
+	templatePaths := []string{
+		"internal/templates/**/*.html",
+		"templates/**/*.html",
 	}
 
-	tmpl, err := template.ParseGlob(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("parse templates: %w", err)
+	var tmpl *template.Template
+	var err error
+
+	for _, pattern := range templatePaths {
+		tmpl, err = template.ParseGlob(pattern)
+		if err == nil {
+			slog.Info("svensktvin: templates loaded", "pattern", pattern)
+			return tmpl, nil
+		}
+		slog.Debug("svensktvin: template pattern not found", "pattern", pattern)
 	}
 
-	return tmpl, nil
+	return nil, fmt.Errorf("no templates found in %v", templatePaths)
 }
 
-// randomHex generates a hex-encoded random string.
-func randomHex(n int) string {
-	b := make([]byte, n)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+// getTemplateFuncMap returns template helper functions.
+func getTemplateFuncMap() template.FuncMap {
+	return template.FuncMap{
+		"safeHTML": func(s string) template.HTML {
+			return template.HTML(s)
+		},
+	}
 }

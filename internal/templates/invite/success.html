@@ -1,0 +1,26 @@
+{{define "invite/success.html"}}
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbjudan accepterad — Svenskt Vin</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-gray-50 font-sans text-gray-900">
+    <main class="max-w-md mx-auto mt-24 px-4">
+        <div class="bg-green-100 p-4 rounded mb-4">
+            <p class="m-0 text-green-700">✅ Du har nu gått med i {{.VineyardName}}!</p>
+        </div>
+        <p class="text-gray-500 mb-4">
+            Välkommen till {{.VineyardName}}. Du kan nu utforska din vingård och börja registrera skördar.
+        </p>
+        <a href="/vineyard/{{.VineyardID}}"
+           class="block text-center p-3 bg-[#2d6a2d] text-white rounded no-underline font-semibold">
+            Gå till din vingård →
+        </a>
+    </main>
+</body>
+</html>
+{{end}}

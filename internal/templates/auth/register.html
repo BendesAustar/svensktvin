@@ -1,0 +1,86 @@
+{{define "auth/register.html"}}
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrera dig — Svenskt Vin</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-gray-50 font-sans text-gray-900">
+    <main class="max-w-md mx-auto mt-20 px-4">
+
+        {{if .Error}}
+        <!-- Invalid/expired invite -->
+        <div class="bg-red-100 p-4 rounded mb-4">
+            <p class="m-0 text-red-700">❌ {{.Error}}</p>
+        </div>
+        <a href="/login" class="text-[#2d6a2d] text-sm">← Tillbaka till inloggning</a>
+
+        {{else if .HasAccount}}
+        <!-- User has existing account -->
+        <h1 class="text-2xl mb-2">Redan registrerad</h1>
+        <div class="bg-blue-50 p-4 rounded mb-4 border-l-4 border-blue-600">
+            <p class="m-0 mb-2">Det finns redan ett konto för <strong>{{.InviteEmail}}</strong>.</p>
+            <p class="m-0 text-sm text-gray-500">
+                Du har blivit inbjuden att gå med i {{.VineyardName}} (roll: {{.Role}}).
+            </p>
+            <p class="m-0 text-sm text-gray-500">Logga in med det kontot för att acceptera inbjudan.</p>
+        </div>
+        <a href="/login?invite={{.InviteToken}}"
+           class="block text-center p-3 bg-[#2d6a2d] text-white rounded no-underline font-semibold">
+            Logga in för att acceptera inbjudan
+        </a>
+
+        {{else}}
+        <!-- New account registration -->
+        <h1 class="text-2xl mb-2">Skapa konto</h1>
+        <p class="text-gray-500 mb-6 text-sm">
+            Du har blivit inbjuden att joina <strong>{{.VineyardName}}</strong> (roll: {{.Role}}).
+        </p>
+
+        <form method="POST" hx-post="/register" hx-swap="outerHTML">
+            <input type="hidden" name="action" value="register" />
+            <input type="hidden" name="invite_token" value="{{.InviteToken}}" />
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+            <label for="email" class="block mb-1 text-sm">E-postadress</label>
+            <input id="email" type="email" name="email" required
+                   value="{{.InviteEmail}}"
+                   readonly
+                   class="w-full p-2 border border-gray-300 rounded text-lg bg-gray-100" />
+            <p class="text-xs text-gray-400 mt-1 mb-4">
+                Denna e-postadress kommer att bli ditt användarkonto.
+            </p>
+
+            <label for="name" class="block mb-1 text-sm">Namn</label>
+            <input id="name" type="text" name="name" required
+                   minlength="2"
+                   placeholder="Ditt namn"
+                   class="w-full p-2 border border-gray-300 rounded text-lg" />
+
+            <label for="password" class="block mt-3 mb-1 text-sm">Lösenord</label>
+            <input id="password" type="password" name="password" required
+                   minlength="8"
+                   class="w-full p-2 border border-gray-300 rounded text-lg" />
+
+            <label for="confirmPassword" class="block mt-3 mb-1 text-sm">Bekräfta lösenord</label>
+            <input id="confirmPassword" type="password" name="confirmPassword" required
+                   minlength="8"
+                   class="w-full p-2 border border-gray-300 rounded text-lg" />
+
+            {{if .Error}}
+            <p class="text-red-700 mt-3 text-sm">{{.Error}}</p>
+            {{end}}
+
+            <button type="submit"
+                    class="w-full mt-4 p-3 bg-[#2d6a2d] text-white border-none rounded text-lg cursor-pointer">
+                Skapa konto och joina
+            </button>
+        </form>
+        {{end}}
+    </main>
+</body>
+</html>
+{{end}}

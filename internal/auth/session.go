@@ -51,7 +51,7 @@ func NewSessionManager(store *db.Store, sessionExpiry time.Duration) *SessionMan
 // CreateSession creates a session for a user.
 func (sm *SessionManager) CreateSession(ctx context.Context, userID int64) (string, error) {
 	// Create session record
-	sessionID := randomHex(32)
+	sessionID := RandomHex(32)
 	expiresAt := time.Now().Add(sm.sessionExpiry)
 	_, err := sm.store.Pool.Exec(ctx, `
 		INSERT INTO sessions (id, user_id, expires_at)
