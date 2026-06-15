@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/svensktvin/svensktvin/internal/auth"
+	"github.com/svensktvin/svensktvin/internal/config"
 	"github.com/svensktvin/svensktvin/internal/db"
 )
 
@@ -16,6 +17,7 @@ import (
 type adminBootstrapCmd struct {
 	email    string
 	password string
+	appHost  string
 }
 
 // Run executes the bootstrap logic: creates first admin if none exists,
@@ -50,9 +52,9 @@ func (c *adminBootstrapCmd) Run(ctx context.Context, store *db.Store) error {
 
 		fmt.Printf("Admin account updated\n")
 		fmt.Printf("  Email:    %s\n", adminUser.Email)
-		fmt.Printf("\n  Log in at: %s/login\n", os.Getenv("APP_HOST"))
+		fmt.Printf("\n  Log in at: %s/login\n", c.appHost)
 		return nil
-	}
+}
 
 	// 2. No admin exists — create one
 	hash, err := auth.HashPassword(c.password, 12)
@@ -73,7 +75,7 @@ func (c *adminBootstrapCmd) Run(ctx context.Context, store *db.Store) error {
 	fmt.Printf("Admin account created\n")
 	fmt.Printf("  Email:    %s\n", c.email)
 	fmt.Printf("  Password: %s\n", c.password)
-	fmt.Printf("\n  Log in at: %s/login\n", os.Getenv("APP_HOST"))
+	fmt.Printf("\n  Log in at: %s/login\n", c.appHost)
 	fmt.Printf("\n  ⚠  This bootstrap command can be re-run to reset the admin password.\n")
 
 	// 3. Create default vineyard if none exists
@@ -136,6 +138,14 @@ func ExecuteAdminBootstrap(args []string) {
 		os.Exit(1)
 	}
 
+	// Load config (uses config.yaml, falls back to env vars)
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+	appHost := cfg.AppHost
+
 	// Validate password strength
 	valid, errors := auth.PasswordStrength(*password)
 	if !valid {
@@ -148,7 +158,7 @@ func ExecuteAdminBootstrap(args []string) {
 
 	// Connect to database
 	ctx := context.Background()
-	store, err := db.NewStore(ctx, os.Getenv("DATABASE_URL"))
+	store, err := db.NewStore(ctx, cfg.Database.URL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to connect to database: %v\n", err)
 		os.Exit(1)
@@ -156,7 +166,7 @@ func ExecuteAdminBootstrap(args []string) {
 	defer store.Close()
 
 	// Run bootstrap
-	if err := (&adminBootstrapCmd{email: *email, password: *password}).Run(ctx, store); err != nil {
+	if err := (&adminBootstrapCmd{email: *email, password: *password, appHost: appHost}).Run(ctx, store); err != nil {
 		fmt.Fprintf(os.Stderr, "Bootstrap failed: %v\n", err)
 		os.Exit(1)
 	}

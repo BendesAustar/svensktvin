@@ -1,0 +1,35 @@
+# Svenskt Vin application configuration.
+# Loaded by both HTTP server and CLI commands.
+# Secrets (SMTP_PASS, SESSION_SECRET) come from environment variables.
+
+port: 8090
+
+database:
+  url: "postgres://sv_app:sv_dev_pass@127.0.0.1:5432/svensktvin"
+
+api:
+  port: 8090
+
+auth:
+  session_expiry: "720h"
+
+rate_limit:
+  auth_requests: 5
+  auth_window: "15m"
+
+session_secret: ""
+
+smtp:
+  host: ""
+  port: 587
+  user: ""
+  pass: ""
+  from: ""
+
+app_host: "http://localhost:8090"
+
+template_mode: "dev"
+
+cookie:
+  secure: false
+  same_site: "Lax"
