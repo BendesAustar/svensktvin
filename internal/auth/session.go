@@ -142,7 +142,7 @@ func (sm *SessionManager) RequireAdmin(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userInfo := sm.SessionFromRequest(r)
 		if userInfo == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 			return
 		}
 		if !userInfo.IsAdmin {

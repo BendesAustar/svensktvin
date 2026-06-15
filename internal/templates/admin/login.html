@@ -1,0 +1,108 @@
+{{define "admin/login.html"}}
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adminpanel — Inloggning</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-full bg-gray-50 font-sans text-gray-900">
+    <main class="max-w-md mx-auto mt-24 px-4">
+        <h1 class="text-2xl mb-2">🍷 Svenskt Vin — Adminpanel</h1>
+        <p class="text-gray-500 mb-6">Logga in med dina admin-åtkomstuppgifter.</p>
+
+        {{if .Sent}}
+        <!-- Success: magic link sent -->
+        <div class="bg-green-100 p-4 rounded mb-4">
+            <p class="m-0">Om ett konto finns för den adressen har du fått en inloggningslänk via e-post.</p>
+        </div>
+        <a href="/admin" class="text-[#2d6a2d]">← Till adminpanelen</a>
+
+        {{else if .Error}}
+        <!-- Error state -->
+        <p class="text-red-700 mb-4">{{.Error}}</p>
+
+        <!-- Password login form -->
+        <form method="POST" hx-post="/admin/login" hx-swap="outerHTML">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+            <label for="email" class="block mb-1 text-sm">E-postadress</label>
+            <input id="email" type="email" name="email" required
+                   class="w-full p-2 border border-gray-300 rounded text-lg" />
+
+            <div class="mt-3 relative">
+                <label for="password" class="block mb-1 text-sm">Lösenord</label>
+                <input id="password" type="password" name="password"
+                       class="w-full p-2 pr-10 border border-gray-300 rounded text-lg" />
+                <button type="button"
+                        onclick="togglePassword('password', this)"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm bg-none border-none cursor-pointer">
+                    Visa
+                </button>
+            </div>
+
+            <button type="submit"
+                    class="w-full mt-3 p-3 bg-[#2d6a2d] text-white border-none rounded text-lg cursor-pointer">
+                Logga in
+            </button>
+        </form>
+
+        <p class="my-4 text-center">
+            <a href="/auth/forgot-password" class="text-[#2d6a2d] text-sm">Glömt lösenord?</a>
+        </p>
+
+        <p class="text-gray-500 text-sm text-center mt-6">
+            <a href="/" class="text-[#2d6a2d]">← Tillbaka till vingården</a>
+        </p>
+
+        {{else}}
+        <!-- Default: email-only magic link form -->
+        <!-- Password login form -->
+        <form method="POST" hx-post="/admin/login" hx-swap="outerHTML">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+            <label for="email" class="block mb-1 text-sm">E-postadress</label>
+            <input id="email" type="email" name="email" required
+                   class="w-full p-2 border border-gray-300 rounded text-lg" />
+
+            <div class="mt-3 relative">
+                <label for="password" class="block mb-1 text-sm">Lösenord</label>
+                <input id="password" type="password" name="password"
+                       class="w-full p-2 pr-10 border border-gray-300 rounded text-lg" />
+                <button type="button"
+                        onclick="togglePassword('password', this)"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm bg-none border-none cursor-pointer">
+                    Visa
+                </button>
+            </div>
+
+            <button type="submit"
+                    class="w-full mt-3 p-3 bg-[#2d6a2d] text-white border-none rounded text-lg cursor-pointer">
+                Logga in
+            </button>
+        </form>
+
+        <p class="my-4 text-center">
+            <a href="/auth/forgot-password" class="text-[#2d6a2d] text-sm">Glömt lösenord?</a>
+        </p>
+
+        <p class="text-gray-500 text-sm text-center mt-6">
+            <a href="/" class="text-[#2d6a2d]">← Tillbaka till vingården</a>
+        </p>
+        {{end}}
+    </main>
+
+    <script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.textContent = isPassword ? 'Dölj' : 'Visa';
+    }
+    </script>
+</body>
+</html>
+{{end}}

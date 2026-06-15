@@ -138,6 +138,10 @@ func main() {
 	mux.HandleFunc("GET /api/varieties/search", varietySearchHandler.HandleGET)
 	mux.HandleFunc("POST /api/geo/reverse", geoReverseHandler.HandlePOST)
 
+	// Admin login (public — no auth required)
+	mux.HandleFunc("GET /admin/login", adminHandler.HandleAdminLoginGET())
+	mux.HandleFunc("POST /admin/login", adminHandler.HandleAdminLoginPOST())
+
 	// Admin routes (require admin authentication)
 	mux.HandleFunc("GET /admin", sessionMgr.RequireAdmin(adminHandler.HandleDashboardGET()))
 	mux.HandleFunc("GET /admin/", sessionMgr.RequireAdmin(adminHandler.HandleDashboardGET()))

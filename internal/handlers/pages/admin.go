@@ -40,12 +40,126 @@ func NewAdminHandler(store *db.Store, sessionMgr *auth.SessionManager,
 	}
 }
 
+// HandleAdminLoginGET renders the admin login page.
+func (h *AdminHandler) HandleAdminLoginGET() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if already logged in as admin
+		user := h.sessionMgr.SessionFromRequest(r)
+		if user != nil && user.IsAdmin {
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+			return
+		}
+
+		// Generate CSRF token
+		csrfToken := generateCSRFToken()
+		setCSRFCookie(w, csrfToken, h.cookieCfg)
+
+		data := map[string]any{
+			"Title":     "Adminpanel — Inloggning",
+			"CSRFToken": csrfToken,
+		}
+		renderTemplate(w, h.tmpl, "admin/login.html", data)
+	}
+}
+
+// HandleAdminLoginPOST processes admin login form submissions.
+func (h *AdminHandler) HandleAdminLoginPOST() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// CSRF validation
+		if !validateCSRFToken(r) {
+			data := map[string]any{
+				"Title":     "Adminpanel — Inloggning",
+				"Error":     "Ogiltig begäran.",
+				"CSRFToken": generateCSRFToken(),
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
+			return
+		}
+
+		email := sanitizeInput(r.FormValue("email"))
+		password := r.FormValue("password")
+
+		// Get user by email
+		user, err := h.store.GetUserByEmail(r.Context(), email)
+		if err != nil || user == nil {
+			// User not found — show success to prevent enumeration
+			data := map[string]any{
+				"Title":     "Adminpanel — Inloggning",
+				"Sent":      true,
+				"CSRFToken": generateCSRFToken(),
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
+			return
+		}
+
+		// Verify password
+		if user.PasswordHash == nil {
+			// No password set — redirect to set-password
+			http.Redirect(w, r, fmt.Sprintf("/auth/set-password?email=%s", sanitizeInput(email)), http.StatusSeeOther)
+			return
+		}
+
+		match, err := auth.VerifyPassword(password, *user.PasswordHash)
+		if err != nil || !match {
+			csrfToken := generateCSRFToken()
+			setCSRFCookie(w, csrfToken, h.cookieCfg)
+			data := map[string]any{
+				"Title":     "Adminpanel — Inloggning",
+				"Error":     "Fel e-postadress eller lösenord.",
+				"CSRFToken": csrfToken,
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
+			return
+		}
+
+		// Check admin status
+		if !user.IsAdmin {
+			csrfToken := generateCSRFToken()
+			setCSRFCookie(w, csrfToken, h.cookieCfg)
+			data := map[string]any{
+				"Title":     "Adminpanel — Inloggning",
+				"Error":     "Ditt konto har inte administratörsrättigheter.",
+				"CSRFToken": csrfToken,
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
+			return
+		}
+
+		// Create session
+		sessionID, err := h.sessionMgr.CreateSession(r.Context(), user.ID)
+		if err != nil {
+			slog.Error("admin-login: create session", "err", err)
+			data := map[string]any{
+				"Title":     "Adminpanel — Inloggning",
+				"Error":     "Ett internt fel uppstod.",
+				"CSRFToken": generateCSRFToken(),
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
+			return
+		}
+
+		// Set session cookie
+		h.sessionMgr.SetSessionCookie(w, sessionID)
+
+		// Redirect to admin dashboard
+		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	}
+}
+
 // HandleDashboardGET renders the admin dashboard overview.
 func (h *AdminHandler) HandleDashboardGET() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := h.sessionMgr.SessionFromRequest(r)
 		if user == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+			return
+		}
+		if !user.IsAdmin {
+			data := map[string]any{
+				"Title":       "Adminpanel — Inloggning",
+				"Error":       "Du behöver administratörsrättigheter för att komma åt denna sida.",
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
 			return
 		}
 
@@ -141,7 +255,15 @@ func (h *AdminHandler) HandleUsersGET() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := h.sessionMgr.SessionFromRequest(r)
 		if user == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+			return
+		}
+		if !user.IsAdmin {
+			data := map[string]any{
+				"Title":       "Adminpanel — Inloggning",
+				"Error":       "Du behöver administratörsrättigheter för att komma åt denna sida.",
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
 			return
 		}
 
@@ -169,7 +291,15 @@ func (h *AdminHandler) HandleUserDetailGET() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := h.sessionMgr.SessionFromRequest(r)
 		if user == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+			return
+		}
+		if !user.IsAdmin {
+			data := map[string]any{
+				"Title":       "Adminpanel — Inloggning",
+				"Error":       "Du behöver administratörsrättigheter för att komma åt denna sida.",
+			}
+			renderTemplate(w, h.tmpl, "admin/login.html", data)
 			return
 		}
 
